@@ -1,0 +1,8 @@
+[package]
+name = "rotcheck"
+version = "0.1.0"
+edition = "2024"
+description = "Detect missing, changed and silently corrupted files with plain sha256sum-compatible manifests"
+license = "MIT"
+
+[dependencies]
