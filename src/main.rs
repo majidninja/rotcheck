@@ -1,7 +1,9 @@
 mod sha256;
+mod walk;
 
 use std::fs::File;
 use std::io::{self, BufReader};
+use std::path::Path;
 use std::process::ExitCode;
 
 const USAGE: &str = "\
@@ -9,7 +11,8 @@ rotcheck - detect missing, changed and silently corrupted files
 
 USAGE:
     rotcheck hash <FILE>...    Print SHA-256 checksums (sha256sum format)
-    rotcheck help              Show this message
+    rotcheck list [DIR]        List the files a manifest of DIR would cover
+    rotcheck help             Show this message
     rotcheck --version         Show version
 ";
 
@@ -17,6 +20,7 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("hash") => cmd_hash(&args[1..]),
+        Some("list") => cmd_list(&args[1..]),
         Some("help" | "-h" | "--help") => {
             print!("{USAGE}");
             ExitCode::SUCCESS
@@ -61,5 +65,28 @@ fn cmd_hash(paths: &[String]) -> ExitCode {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
+    }
+}
+
+fn cmd_list(args: &[String]) -> ExitCode {
+    let dir = match args {
+        [] => ".",
+        [dir] => dir.as_str(),
+        _ => {
+            eprintln!("rotcheck list: expected at most one directory");
+            return ExitCode::from(2);
+        }
+    };
+    match walk::walk(Path::new(dir)) {
+        Ok(files) => {
+            for f in files {
+                println!("{f}");
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("rotcheck: {dir}: {e}");
+            ExitCode::FAILURE
+        }
     }
 }

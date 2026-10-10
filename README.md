@@ -16,7 +16,7 @@ what's different.
   `sha256sum`, so you can still check your files with standard tools if
   rotcheck ever disappears.
 
-> **Status:** early development. Right now rotcheck can only hash files. The
+> **Status:** early development. Right now rotcheck can hash files and list a folder. The
 > folder manifest and verify commands are next (see the roadmap in
 > [DEVLOG.md](DEVLOG.md)).
 
@@ -47,6 +47,19 @@ with `sha256sum -c`:
 rotcheck hash *.jpg > photos.sha256
 sha256sum -c photos.sha256
 ```
+
+See which files rotcheck would track in a folder:
+
+```sh
+$ rotcheck list ~/Pictures
+2024/beach.jpg
+2024/notes.txt
+scan.png
+```
+
+Paths are relative to the folder, always use `/`, and are sorted. Symbolic
+links are skipped (not followed), so a link can't pull in files from outside
+the folder or send rotcheck in circles.
 
 ## Planned
 

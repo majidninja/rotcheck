@@ -16,7 +16,7 @@ Design rules:
 ## Roadmap
 
 1. [x] SHA-256 + `rotcheck hash <files>` (sha256sum-compatible output)
-2. [ ] Recursive directory walk (sorted, skip the manifest itself, don't follow symlinks)
+2. [x] Recursive directory walk (sorted, skip the manifest itself, don't follow symlinks)
 3. [ ] Manifest format + `rotcheck init <dir>` writes `<dir>/.rotcheck.sha256`
 4. [ ] `rotcheck verify <dir>`: missing / new / modified / corrupted report
 5. [ ] `rotcheck update <dir>`: accept changes
@@ -35,3 +35,17 @@ Design rules:
 **Next:** roadmap item 2: a recursive directory walker that returns sorted
 relative paths with forward slashes, skips symlinks and the manifest file, and
 has tests using a temp dir under `std::env::temp_dir()`.
+
+## 2026-10-10
+
+- Added `src/walk.rs`: recursive walk returning sorted, `/`-separated relative
+  paths. Skips symlinks (files and dirs), special files, and `.rotcheck.sha256`
+  at the top level only. Non-UTF-8 names are a hard error for now (revisit with
+  roadmap item 6).
+- Tests use a small self-cleaning `TempDir` helper under `std::env::temp_dir()`.
+- Added `rotcheck list [DIR]` to preview what a manifest would cover; README updated.
+
+**Next:** roadmap item 3: `rotcheck init <dir>` writing `<dir>/.rotcheck.sha256`.
+Decide where size/mtime go. `#` comment lines (e.g. `# size=123 mtime=1700000000`)
+are the idea, but first confirm that `sha256sum -c` really ignores them; if it
+doesn't, use a sidecar file. Write the manifest atomically (temp file + rename).
