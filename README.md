@@ -16,8 +16,8 @@ what's different.
   `sha256sum`, so you can still check your files with standard tools if
   rotcheck ever disappears.
 
-> **Status:** early development. Right now rotcheck can hash files and list a folder. The
-> folder manifest and verify commands are next (see the roadmap in
+> **Status:** early development. rotcheck can hash files, list a folder and
+> record a manifest for it. The `verify` command is next (see the roadmap in
 > [DEVLOG.md](DEVLOG.md)).
 
 ## Install
@@ -61,10 +61,36 @@ Paths are relative to the folder, always use `/`, and are sorted. Symbolic
 links are skipped (not followed), so a link can't pull in files from outside
 the folder or send rotcheck in circles.
 
+Record a checksum for every file in a folder:
+
+```sh
+$ rotcheck init ~/Pictures
+rotcheck: recorded 3 files in /home/you/Pictures/.rotcheck.sha256
+```
+
+This writes `.rotcheck.sha256` at the top of the folder. It's a plain text
+file that looks like this:
+
+```text
+# rotcheck manifest v1
+# size=48213 mtime=1700000000
+9f2c...e41a  2024/beach.jpg
+```
+
+The `#` lines hold each file's size and modification time. `sha256sum` skips
+them, so you can check the folder without rotcheck too:
+
+```sh
+cd ~/Pictures && sha256sum -c .rotcheck.sha256
+```
+
+`init` won't overwrite an existing manifest. File names that contain a
+newline or a backslash aren't supported yet, and `init` stops with an error
+if it finds one.
+
 ## Planned
 
 ```sh
-rotcheck init ~/Pictures      # record a checksum for every file
 rotcheck verify ~/Pictures    # report missing, new, modified and corrupted files
 rotcheck update ~/Pictures    # accept intentional changes into the manifest
 ```

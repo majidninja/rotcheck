@@ -17,7 +17,7 @@ Design rules:
 
 1. [x] SHA-256 + `rotcheck hash <files>` (sha256sum-compatible output)
 2. [x] Recursive directory walk (sorted, skip the manifest itself, don't follow symlinks)
-3. [ ] Manifest format + `rotcheck init <dir>` writes `<dir>/.rotcheck.sha256`
+3. [x] Manifest format + `rotcheck init <dir>` writes `<dir>/.rotcheck.sha256`
 4. [ ] `rotcheck verify <dir>`: missing / new / modified / corrupted report
 5. [ ] `rotcheck update <dir>`: accept changes
 6. [ ] Paths with newlines/backslashes (sha256sum's `\` escaping convention)
@@ -49,3 +49,25 @@ has tests using a temp dir under `std::env::temp_dir()`.
 Decide where size/mtime go. `#` comment lines (e.g. `# size=123 mtime=1700000000`)
 are the idea, but first confirm that `sha256sum -c` really ignores them; if it
 doesn't, use a sidecar file. Write the manifest atomically (temp file + rename).
+
+## 2026-10-11
+
+- Checked it: GNU `sha256sum -c --strict` skips `#` lines, so metadata goes in
+  comments and no sidecar file is needed.
+- Added `src/manifest.rs`. The format is a `# rotcheck manifest v1` header,
+  then a `# size=N mtime=SECS` line before each `<hex>  <path>` line. The
+  manifest is written atomically (`.tmp` + fsync + rename). `parse` also
+  accepts plain `sha256sum` output (`*` binary marker too); those entries get
+  size 0 and mtime 0. Paths with `\n`, `\r` or `\` are rejected until item 6.
+- Added `rotcheck init [DIR]`. It refuses to overwrite an existing manifest.
+  Metadata is read before hashing, so a file written during the hash shows
+  up as "modified", not "corrupted".
+- Roadmap item 3 done.
+
+**Next:** roadmap item 4: `rotcheck verify [DIR]`. `manifest::parse` is ready
+(it has `#[allow(dead_code)]` for now; remove that). Classify each entry:
+missing, new (on disk but not in the manifest), modified (hash differs and
+size or mtime differs), corrupted (hash differs, size and mtime the same).
+Exit with 1 if anything is missing or corrupted. Decide whether "modified" or
+"new" should also give exit 1, or need a flag. Possibly also skip a leftover
+`.rotcheck.sha256.tmp` in the walker.
