@@ -12,8 +12,12 @@ use std::path::Path;
 /// Name of the manifest file rotcheck keeps at the root of a checked tree.
 pub const MANIFEST_NAME: &str = ".rotcheck.sha256";
 
+/// Temp file `manifest::save` writes next to the manifest. One can be left
+/// behind if a run is killed mid-write.
+pub const MANIFEST_TMP_NAME: &str = ".rotcheck.sha256.tmp";
+
 /// Lists all regular files under `root`, skipping symlinks and the manifest
-/// file at the top level.
+/// file (and its temp file) at the top level.
 pub fn walk(root: &Path) -> io::Result<Vec<String>> {
     let mut out = Vec::new();
     walk_dir(root, "", &mut out)?;
@@ -38,7 +42,7 @@ fn walk_dir(dir: &Path, prefix: &str, out: &mut Vec<String>) -> io::Result<()> {
         if ft.is_dir() {
             walk_dir(&entry.path(), &format!("{rel}/"), out)?;
         } else if ft.is_file() {
-            if prefix.is_empty() && name == MANIFEST_NAME {
+            if prefix.is_empty() && (name == MANIFEST_NAME || name == MANIFEST_TMP_NAME) {
                 continue;
             }
             out.push(rel);
@@ -49,15 +53,15 @@ fn walk_dir(dir: &Path, prefix: &str, out: &mut Vec<String>) -> io::Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use std::path::PathBuf;
 
     /// A fresh, empty directory under the system temp dir, removed on drop.
-    struct TempDir(PathBuf);
+    pub(crate) struct TempDir(pub(crate) PathBuf);
 
     impl TempDir {
-        fn new(tag: &str) -> Self {
+        pub(crate) fn new(tag: &str) -> Self {
             let path =
                 std::env::temp_dir().join(format!("rotcheck-test-{tag}-{}", std::process::id()));
             let _ = fs::remove_dir_all(&path);
@@ -101,6 +105,7 @@ mod tests {
     fn skips_manifest_only_at_top_level() {
         let t = TempDir::new("manifest");
         touch(&t.0, MANIFEST_NAME);
+        touch(&t.0, MANIFEST_TMP_NAME);
         touch(&t.0, &format!("sub/{MANIFEST_NAME}"));
         touch(&t.0, "keep");
         assert_eq!(

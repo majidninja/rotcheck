@@ -98,8 +98,6 @@ fn parse_meta(rest: &str) -> Option<(u64, i64)> {
 
 /// Parses manifest text. Checksum lines without a preceding metadata comment
 /// (for example a plain `sha256sum` output) get size 0 and mtime 0.
-// Used by `verify`, which is the next command to land.
-#[allow(dead_code)]
 pub fn parse(text: &str) -> io::Result<Vec<Entry>> {
     let mut entries = Vec::new();
     let mut pending: Option<(u64, i64)> = None;

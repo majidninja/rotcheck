@@ -16,9 +16,9 @@ what's different.
   `sha256sum`, so you can still check your files with standard tools if
   rotcheck ever disappears.
 
-> **Status:** early development. rotcheck can hash files, list a folder and
-> record a manifest for it. The `verify` command is next (see the roadmap in
-> [DEVLOG.md](DEVLOG.md)).
+> **Status:** early development, but the core loop works: `init` records a
+> folder and `verify` checks it. Accepting intentional changes (`update`) is
+> next; see the roadmap in [DEVLOG.md](DEVLOG.md).
 
 ## Install
 
@@ -88,16 +88,55 @@ cd ~/Pictures && sha256sum -c .rotcheck.sha256
 newline or a backslash aren't supported yet, and `init` stops with an error
 if it finds one.
 
+Check the folder against its manifest, whenever you like:
+
+```sh
+$ rotcheck verify ~/Pictures
+MODIFIED    2024/notes.txt
+MISSING     old.txt
+CORRUPTED   scan.png
+NEW         new.txt
+rotcheck: 1 ok, 1 corrupted, 1 modified, 1 missing, 1 new
+```
+
+Every recorded file is read and hashed again, so this takes about as long as
+`init` did. Files that are fine aren't listed. The words mean:
+
+| Word         | What happened                                                          |
+|--------------|------------------------------------------------------------------------|
+| `CORRUPTED`  | The content changed, but the size and timestamp didn't. Likely bit rot. |
+| `MODIFIED`   | The content changed and so did the size or timestamp. Probably an edit. |
+| `MISSING`    | The file is in the manifest but no longer in the folder.               |
+| `NEW`        | The file is in the folder but not in the manifest.                     |
+| `UNREADABLE` | The file is there, but rotcheck couldn't read it.                      |
+
+`CORRUPTED` is the one to worry about: restore that file from a backup. A file
+whose timestamp changed while its content stayed the same counts as fine.
+
+`verify` never changes anything, neither your files nor the manifest.
+
+### Exit codes
+
+Handy for cron jobs and scripts:
+
+- `0`: everything recorded is intact. New files alone don't count as a problem.
+- `1`: something is corrupted, modified, missing or unreadable.
+- `2`: rotcheck couldn't do the check (bad arguments, no manifest, unreadable
+  folder).
+
+```sh
+rotcheck verify /mnt/backup/photos || echo "check the photo backup!"
+```
+
+`verify` also accepts a plain `sha256sum` list saved as `.rotcheck.sha256`.
+Such a list has no sizes or timestamps, so any changed file shows up as
+`MODIFIED`.
+
 ## Planned
 
 ```sh
-rotcheck verify ~/Pictures    # report missing, new, modified and corrupted files
 rotcheck update ~/Pictures    # accept intentional changes into the manifest
 ```
-
-rotcheck separates **modified** files (the timestamp changed, so you probably
-edited them) from **corrupted** files (the content changed but the timestamp
-didn't). The second kind is the one to worry about.
 
 ## License
 

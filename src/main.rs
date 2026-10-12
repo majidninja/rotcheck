@@ -1,5 +1,6 @@
 mod manifest;
 mod sha256;
+mod verify;
 mod walk;
 
 use std::fs::File;
@@ -14,7 +15,8 @@ USAGE:
     rotcheck hash <FILE>...    Print SHA-256 checksums (sha256sum format)
     rotcheck list [DIR]        List the files a manifest of DIR would cover
     rotcheck init [DIR]        Record checksums for DIR in DIR/.rotcheck.sha256
-    rotcheck help             Show this message
+    rotcheck verify [DIR]      Check DIR against its manifest
+    rotcheck help              Show this message
     rotcheck --version         Show version
 ";
 
@@ -24,6 +26,7 @@ fn main() -> ExitCode {
         Some("hash") => cmd_hash(&args[1..]),
         Some("list") => cmd_list(&args[1..]),
         Some("init") => cmd_init(&args[1..]),
+        Some("verify") => cmd_verify(&args[1..]),
         Some("help" | "-h" | "--help") => {
             print!("{USAGE}");
             ExitCode::SUCCESS
@@ -128,6 +131,54 @@ fn cmd_init(args: &[String]) -> ExitCode {
         Err(e) => {
             eprintln!("rotcheck: {dir}: {e}");
             ExitCode::FAILURE
+        }
+    }
+}
+
+fn cmd_verify(args: &[String]) -> ExitCode {
+    let Some(dir) = dir_arg("verify", args) else {
+        return ExitCode::from(2);
+    };
+    let root = Path::new(dir);
+    let manifest_path = root.join(walk::MANIFEST_NAME);
+    let entries = match std::fs::read_to_string(&manifest_path).and_then(|t| manifest::parse(&t)) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            eprintln!(
+                "rotcheck: no manifest at {}; run `rotcheck init {dir}` first",
+                manifest_path.display()
+            );
+            return ExitCode::from(2);
+        }
+        Err(e) => {
+            eprintln!("rotcheck: {}: {e}", manifest_path.display());
+            return ExitCode::from(2);
+        }
+    };
+    let result = verify::verify(root, &entries, |path, status| {
+        if status != verify::Status::Ok {
+            println!("{status:<10}  {path}");
+        }
+    });
+    match result {
+        Ok(s) => {
+            let mut line = format!(
+                "rotcheck: {} ok, {} corrupted, {} modified, {} missing, {} new",
+                s.ok, s.corrupted, s.modified, s.missing, s.new
+            );
+            if s.unreadable > 0 {
+                line.push_str(&format!(", {} unreadable", s.unreadable));
+            }
+            println!("{line}");
+            if s.has_problems() {
+                ExitCode::FAILURE
+            } else {
+                ExitCode::SUCCESS
+            }
+        }
+        Err(e) => {
+            eprintln!("rotcheck: {dir}: {e}");
+            ExitCode::from(2)
         }
     }
 }
