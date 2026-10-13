@@ -94,6 +94,17 @@ pub fn verify<F: FnMut(&str, Status)>(
     entries: &[Entry],
     mut report: F,
 ) -> io::Result<Summary> {
+    scan(root, entries, |path, status, _| report(path, status))
+}
+
+/// Like [`verify`], but also hands `report` what is on disk right now for
+/// every file that was hashed (ok, modified or corrupted), so `update` does
+/// not have to read those files a second time.
+pub fn scan<F: FnMut(&str, Status, Option<Entry>)>(
+    root: &Path,
+    entries: &[Entry],
+    mut report: F,
+) -> io::Result<Summary> {
     let on_disk: BTreeSet<String> = walk::walk(root)?.into_iter().collect();
     let mut known = BTreeSet::new();
     let mut summary = Summary::default();
@@ -101,25 +112,37 @@ pub fn verify<F: FnMut(&str, Status)>(
         if !known.insert(entry.path.as_str()) {
             continue; // listed twice; the first line wins
         }
-        let status = if on_disk.contains(&entry.path) {
-            let full = root.join(&entry.path);
-            // Metadata first, like `init`, so a write during hashing shows up
-            // as a changed mtime instead of looking like corruption.
-            match manifest::file_meta(&full).and_then(|m| Ok((m, crate::hash_file(&full)?))) {
-                Ok(((size, mtime), hash)) => classify(entry, size, mtime, &hash),
-                Err(_) => Status::Unreadable,
+        let (status, current) = if on_disk.contains(&entry.path) {
+            match current_entry(root, &entry.path) {
+                Ok(now) => (classify(entry, now.size, now.mtime, &now.hash), Some(now)),
+                Err(_) => (Status::Unreadable, None),
             }
         } else {
-            Status::Missing
+            (Status::Missing, None)
         };
         summary.count(status);
-        report(&entry.path, status);
+        report(&entry.path, status, current);
     }
     for path in on_disk.iter().filter(|p| !known.contains(p.as_str())) {
         summary.count(Status::New);
-        report(path, Status::New);
+        report(path, Status::New, None);
     }
     Ok(summary)
+}
+
+/// Reads and hashes the file at `rel` under `root`. Metadata is read before
+/// hashing so a file written to mid-hash looks modified (not corrupted) on
+/// the next verify.
+pub fn current_entry(root: &Path, rel: &str) -> io::Result<Entry> {
+    let full = root.join(rel);
+    let (size, mtime) = manifest::file_meta(&full)?;
+    let hash = crate::hash_file(&full)?;
+    Ok(Entry {
+        path: rel.to_string(),
+        hash,
+        size,
+        mtime,
+    })
 }
 
 #[cfg(test)]

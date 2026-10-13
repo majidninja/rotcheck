@@ -19,7 +19,7 @@ Design rules:
 2. [x] Recursive directory walk (sorted, skip the manifest itself, don't follow symlinks)
 3. [x] Manifest format + `rotcheck init <dir>` writes `<dir>/.rotcheck.sha256`
 4. [x] `rotcheck verify <dir>`: missing / new / modified / corrupted report
-5. [ ] `rotcheck update <dir>`: accept changes
+5. [x] `rotcheck update <dir>`: accept changes
 6. [ ] Paths with newlines/backslashes (sha256sum's `\` escaping convention)
 7. [ ] Progress output for big trees, `--quiet`, `--json`?
 8. [ ] Integration tests with temp dirs; release builds / install docs
@@ -101,3 +101,30 @@ given. Print what changed, reusing `verify::Status`. Small follow-ups: a
 `--strict` flag for `verify` (new files give exit 1), and rejecting manifest
 paths that are absolute or contain `..` so a hand-edited manifest can't make
 rotcheck read outside the folder.
+
+## 2026-10-13
+
+- Added `src/update.rs` and `rotcheck update [--accept-corrupted] [DIR]`.
+  It re-hashes everything, then rewrites the manifest (atomically, sorted by
+  path): new files added, missing dropped, modified re-recorded. Unchanged
+  files get their size/mtime refreshed, which also fills in metadata for
+  entries that came from a plain `sha256sum` list.
+- Corrupted files keep their old entry unless `--accept-corrupted` is given,
+  so `verify` keeps flagging them. Unreadable files keep their old entry too.
+  Exit 1 if either kind was left behind, 0 otherwise, 2 if it couldn't run.
+- Refactor: `verify::scan` is the shared loop. It hands the caller the
+  freshly hashed `Entry` so `update` doesn't read files twice.
+  `verify::current_entry` replaces the duplicated meta-then-hash code in
+  `init` and `verify`. `load_manifest` in `main.rs` is shared by both commands.
+- Tests: 3 unit tests in `update.rs`, 2 more in `tests/cli.rs` (19 unit + 7
+  CLI now). As before, the binary was only exercised through `tests/cli.rs`,
+  not by hand.
+- Not done: no dry-run for `update`; the README tells people to run `verify`
+  first. An unreadable *new* file is covered by code but not by a test.
+
+**Next:** harden manifest parsing (small, do first): reject paths that are
+absolute or contain `..` / empty components, with a test. They can't be read
+today because `scan` only opens paths the walker returned, but a clear error
+beats a confusing MISSING. Then `verify --strict` (new files give exit 1).
+After that roadmap item 6: `sha256sum`'s backslash escaping (line starts with
+`\`, and `\\`, `\n`, `\r` in the name) so odd file names stop blocking `init`.

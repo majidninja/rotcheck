@@ -1,5 +1,6 @@
 mod manifest;
 mod sha256;
+mod update;
 mod verify;
 mod walk;
 
@@ -16,6 +17,8 @@ USAGE:
     rotcheck list [DIR]        List the files a manifest of DIR would cover
     rotcheck init [DIR]        Record checksums for DIR in DIR/.rotcheck.sha256
     rotcheck verify [DIR]      Check DIR against its manifest
+    rotcheck update [DIR]      Accept added, edited and removed files into the manifest
+        --accept-corrupted     Also re-record files that look corrupted
     rotcheck help              Show this message
     rotcheck --version         Show version
 ";
@@ -27,6 +30,7 @@ fn main() -> ExitCode {
         Some("list") => cmd_list(&args[1..]),
         Some("init") => cmd_init(&args[1..]),
         Some("verify") => cmd_verify(&args[1..]),
+        Some("update") => cmd_update(&args[1..]),
         Some("help" | "-h" | "--help") => {
             print!("{USAGE}");
             ExitCode::SUCCESS
@@ -141,19 +145,8 @@ fn cmd_verify(args: &[String]) -> ExitCode {
     };
     let root = Path::new(dir);
     let manifest_path = root.join(walk::MANIFEST_NAME);
-    let entries = match std::fs::read_to_string(&manifest_path).and_then(|t| manifest::parse(&t)) {
-        Ok(entries) => entries,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            eprintln!(
-                "rotcheck: no manifest at {}; run `rotcheck init {dir}` first",
-                manifest_path.display()
-            );
-            return ExitCode::from(2);
-        }
-        Err(e) => {
-            eprintln!("rotcheck: {}: {e}", manifest_path.display());
-            return ExitCode::from(2);
-        }
+    let Some(entries) = load_manifest(dir, &manifest_path) else {
+        return ExitCode::from(2);
     };
     let result = verify::verify(root, &entries, |path, status| {
         if status != verify::Status::Ok {
@@ -183,21 +176,96 @@ fn cmd_verify(args: &[String]) -> ExitCode {
     }
 }
 
-/// Hashes every file under `root`. Metadata is read before hashing so a file
-/// written to mid-hash looks modified (not corrupted) on the next verify.
+/// Reads the manifest, or prints why it couldn't and returns `None`.
+fn load_manifest(dir: &str, manifest_path: &Path) -> Option<Vec<manifest::Entry>> {
+    match std::fs::read_to_string(manifest_path).and_then(|t| manifest::parse(&t)) {
+        Ok(entries) => Some(entries),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            eprintln!(
+                "rotcheck: no manifest at {}; run `rotcheck init {dir}` first",
+                manifest_path.display()
+            );
+            None
+        }
+        Err(e) => {
+            eprintln!("rotcheck: {}: {e}", manifest_path.display());
+            None
+        }
+    }
+}
+
+fn cmd_update(args: &[String]) -> ExitCode {
+    let (flags, rest): (Vec<String>, Vec<String>) =
+        args.iter().cloned().partition(|a| a.starts_with("--"));
+    let mut accept_corrupted = false;
+    for flag in &flags {
+        match flag.as_str() {
+            "--accept-corrupted" => accept_corrupted = true,
+            other => {
+                eprintln!("rotcheck update: unknown option '{other}'");
+                return ExitCode::from(2);
+            }
+        }
+    }
+    let Some(dir) = dir_arg("update", &rest) else {
+        return ExitCode::from(2);
+    };
+    let root = Path::new(dir);
+    let manifest_path = root.join(walk::MANIFEST_NAME);
+    let Some(old) = load_manifest(dir, &manifest_path) else {
+        return ExitCode::from(2);
+    };
+    let result = update::update(root, &old, accept_corrupted, |path, status| {
+        if status != verify::Status::Ok {
+            println!("{status:<10}  {path}");
+        }
+    })
+    .and_then(|(entries, summary)| {
+        manifest::save(&entries, &manifest_path)?;
+        Ok(summary)
+    });
+    let s = match result {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("rotcheck: {dir}: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let mut line = format!(
+        "rotcheck: manifest updated: {} added, {} updated, {} removed, {} unchanged",
+        s.new, s.modified, s.missing, s.ok
+    );
+    if s.corrupted > 0 {
+        let what = if accept_corrupted { "accepted" } else { "kept" };
+        line.push_str(&format!(", {} corrupted ({what})", s.corrupted));
+    }
+    if s.unreadable > 0 {
+        line.push_str(&format!(", {} unreadable", s.unreadable));
+    }
+    println!("{line}");
+    let refused = s.corrupted > 0 && !accept_corrupted;
+    if refused {
+        eprintln!(
+            "rotcheck: corrupted files keep their old checksum, so `verify` still flags them"
+        );
+        eprintln!(
+            "rotcheck: restore them from a backup, or run `rotcheck update --accept-corrupted {dir}`"
+        );
+    }
+    if refused || s.unreadable > 0 {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+/// Hashes every file under `root`.
 fn build_entries(root: &Path) -> io::Result<Vec<manifest::Entry>> {
     let mut entries = Vec::new();
     for rel in walk::walk(root)? {
-        let full = root.join(&rel);
-        let with_path = |e: io::Error| io::Error::new(e.kind(), format!("{rel}: {e}"));
-        let (size, mtime) = manifest::file_meta(&full).map_err(with_path)?;
-        let hash = hash_file(&full).map_err(with_path)?;
-        entries.push(manifest::Entry {
-            path: rel,
-            hash,
-            size,
-            mtime,
-        });
+        let entry = verify::current_entry(root, &rel)
+            .map_err(|e| io::Error::new(e.kind(), format!("{rel}: {e}")))?;
+        entries.push(entry);
     }
     Ok(entries)
 }

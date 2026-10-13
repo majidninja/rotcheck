@@ -121,3 +121,55 @@ fn verify_reads_plain_sha256sum_lists() {
     assert_eq!(out.status.code(), Some(1));
     assert!(stdout(&out).starts_with("MODIFIED    abc.txt\n"));
 }
+
+#[test]
+fn update_accepts_changes_and_refuses_corruption() {
+    let t = TempDir::new("update");
+    fs::write(t.0.join("notes.txt"), "notes").unwrap();
+    fs::write(t.0.join("old.txt"), "old").unwrap();
+    fs::write(t.0.join("scan.png"), "scan").unwrap();
+    set_mtime(&t.0.join("scan.png"), 1_700_000_000);
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    fs::remove_file(t.0.join("old.txt")).unwrap();
+    fs::write(t.0.join("notes.txt"), "notes, and more").unwrap();
+    fs::write(t.0.join("new.txt"), "new").unwrap();
+    fs::write(t.0.join("scan.png"), "scaN").unwrap();
+    set_mtime(&t.0.join("scan.png"), 1_700_000_000);
+
+    let out = rotcheck(&["update"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(
+        stdout(&out),
+        "MODIFIED    notes.txt\n\
+         MISSING     old.txt\n\
+         CORRUPTED   scan.png\n\
+         NEW         new.txt\n\
+         rotcheck: manifest updated: 1 added, 1 updated, 1 removed, 0 unchanged, 1 corrupted (kept)\n"
+    );
+    assert!(String::from_utf8_lossy(&out.stderr).contains("--accept-corrupted"));
+
+    // Everything but the corrupted file is settled now.
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(
+        stdout(&out),
+        "CORRUPTED   scan.png\n\
+         rotcheck: 2 ok, 1 corrupted, 0 modified, 0 missing, 0 new\n"
+    );
+
+    let out = rotcheck(&["update", "--accept-corrupted"], &t.0);
+    assert_eq!(out.status.code(), Some(0));
+    assert!(stdout(&out).ends_with("2 unchanged, 1 corrupted (accepted)\n"));
+    assert_eq!(rotcheck(&["verify"], &t.0).status.code(), Some(0));
+}
+
+#[test]
+fn update_needs_a_manifest_and_known_options() {
+    let t = TempDir::new("update-errors");
+    assert_eq!(rotcheck(&["update"], &t.0).status.code(), Some(2));
+    fs::write(t.0.join(".rotcheck.sha256"), "").unwrap();
+    let out = rotcheck(&["update", "--frobnicate"], &t.0);
+    assert_eq!(out.status.code(), Some(2));
+    assert_eq!(fs::read(t.0.join(".rotcheck.sha256")).unwrap(), b"");
+}

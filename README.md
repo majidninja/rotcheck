@@ -17,8 +17,8 @@ what's different.
   rotcheck ever disappears.
 
 > **Status:** early development, but the core loop works: `init` records a
-> folder and `verify` checks it. Accepting intentional changes (`update`) is
-> next; see the roadmap in [DEVLOG.md](DEVLOG.md).
+> folder, `verify` checks it and `update` accepts your intentional changes.
+> What's left is on the roadmap in [DEVLOG.md](DEVLOG.md).
 
 ## Install
 
@@ -115,6 +115,33 @@ whose timestamp changed while its content stayed the same counts as fine.
 
 `verify` never changes anything, neither your files nor the manifest.
 
+After you've added, edited or deleted files on purpose, bring the manifest up
+to date:
+
+```sh
+$ rotcheck update ~/Pictures
+MODIFIED    2024/notes.txt
+MISSING     old.txt
+CORRUPTED   scan.png
+NEW         new.txt
+rotcheck: manifest updated: 1 added, 1 updated, 1 removed, 0 unchanged, 1 corrupted (kept)
+```
+
+`update` reads every file again, like `verify`, and then rewrites the
+manifest: new files are added, missing ones are dropped and edited ones get
+their new checksum.
+
+Files that look corrupted are left alone. They keep their old checksum, so
+`verify` goes on flagging them until you've restored them from a backup. If
+you're sure the current content is what you want, say so explicitly:
+
+```sh
+rotcheck update --accept-corrupted ~/Pictures
+```
+
+It's worth running `verify` and reading its output before `update`, because
+`update` accepts every `MODIFIED` and `MISSING` file without asking.
+
 ### Exit codes
 
 Handy for cron jobs and scripts:
@@ -124,6 +151,9 @@ Handy for cron jobs and scripts:
 - `2`: rotcheck couldn't do the check (bad arguments, no manifest, unreadable
   folder).
 
+`update` uses the same codes: `0` when the manifest now matches the folder,
+`1` when it left a corrupted or unreadable file as it was.
+
 ```sh
 rotcheck verify /mnt/backup/photos || echo "check the photo backup!"
 ```
@@ -131,12 +161,6 @@ rotcheck verify /mnt/backup/photos || echo "check the photo backup!"
 `verify` also accepts a plain `sha256sum` list saved as `.rotcheck.sha256`.
 Such a list has no sizes or timestamps, so any changed file shows up as
 `MODIFIED`.
-
-## Planned
-
-```sh
-rotcheck update ~/Pictures    # accept intentional changes into the manifest
-```
 
 ## License
 
