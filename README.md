@@ -146,7 +146,9 @@ It's worth running `verify` and reading its output before `update`, because
 
 Handy for cron jobs and scripts:
 
-- `0`: everything recorded is intact. New files alone don't count as a problem.
+- `0`: everything recorded is intact. New files alone don't count as a problem,
+  unless you pass `--strict` (useful for archive folders that should never
+  grow).
 - `1`: something is corrupted, modified, missing or unreadable.
 - `2`: rotcheck couldn't do the check (bad arguments, no manifest, unreadable
   folder).
@@ -160,7 +162,9 @@ rotcheck verify /mnt/backup/photos || echo "check the photo backup!"
 
 `verify` also accepts a plain `sha256sum` list saved as `.rotcheck.sha256`.
 Such a list has no sizes or timestamps, so any changed file shows up as
-`MODIFIED`.
+`MODIFIED`. A leading `./` on paths (as `find . -type f -exec sha256sum {} +`
+prints them) is fine. Absolute paths and paths with `..` are refused, so a
+manifest can never make rotcheck look outside the folder.
 
 ## License
 

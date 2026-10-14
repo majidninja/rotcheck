@@ -96,6 +96,27 @@ fn parse_meta(rest: &str) -> Option<(u64, i64)> {
     Some((size?, mtime?))
 }
 
+/// Checks that a manifest path stays inside the folder and returns it in the
+/// form the walker produces. A leading `./` (as in `find . | xargs sha256sum`
+/// output) is dropped; absolute paths and `.`, `..` or empty components are
+/// refused so a hand-edited manifest can't point outside the folder.
+fn clean_path(path: &str) -> Result<String, &'static str> {
+    let mut path = path;
+    while let Some(rest) = path.strip_prefix("./") {
+        path = rest;
+    }
+    if path.starts_with('/') {
+        return Err("absolute paths are not allowed");
+    }
+    if path
+        .split('/')
+        .any(|part| part.is_empty() || part == "." || part == "..")
+    {
+        return Err("path must be relative, without empty, '.' or '..' parts");
+    }
+    Ok(path.to_string())
+}
+
 /// Parses manifest text. Checksum lines without a preceding metadata comment
 /// (for example a plain `sha256sum` output) get size 0 and mtime 0.
 pub fn parse(text: &str) -> io::Result<Vec<Entry>> {
@@ -119,9 +140,10 @@ pub fn parse(text: &str) -> io::Result<Vec<Entry>> {
         if hash.len() != 64 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
             return Err(bad(line_no, "not a SHA-256 hex digest"));
         }
+        let path = clean_path(path).map_err(|msg| bad(line_no, msg))?;
         let (size, mtime) = pending.take().unwrap_or((0, 0));
         entries.push(Entry {
-            path: path.to_string(),
+            path,
             hash: hash.to_ascii_lowercase(),
             size,
             mtime,
@@ -167,6 +189,29 @@ mod tests {
     fn rejects_garbage() {
         assert!(parse("nonsense\n").is_err());
         assert!(parse("abc  file\n").is_err());
+    }
+
+    #[test]
+    fn rejects_paths_outside_the_folder() {
+        let h = "ab".repeat(32);
+        for bad_path in [
+            "/etc/passwd",
+            "../x",
+            "a/../../x",
+            "a//b",
+            "a/./b",
+            "a/",
+            ".",
+        ] {
+            let text = format!("{h}  {bad_path}\n");
+            assert!(parse(&text).is_err(), "accepted {bad_path:?}");
+        }
+    }
+
+    #[test]
+    fn strips_leading_dot_slash() {
+        let text = format!("{}  ./dir/a.txt\n", "ab".repeat(32));
+        assert_eq!(parse(&text).unwrap()[0].path, "dir/a.txt");
     }
 
     #[test]

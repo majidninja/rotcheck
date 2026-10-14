@@ -17,6 +17,7 @@ USAGE:
     rotcheck list [DIR]        List the files a manifest of DIR would cover
     rotcheck init [DIR]        Record checksums for DIR in DIR/.rotcheck.sha256
     rotcheck verify [DIR]      Check DIR against its manifest
+        --strict               Also fail (exit 1) when there are new files
     rotcheck update [DIR]      Accept added, edited and removed files into the manifest
         --accept-corrupted     Also re-record files that look corrupted
     rotcheck help              Show this message
@@ -139,8 +140,37 @@ fn cmd_init(args: &[String]) -> ExitCode {
     }
 }
 
+/// Splits `--flags` from positional arguments. Returns which of `known` were
+/// given (in the same order), or prints an error and returns `None` for an
+/// unknown flag.
+fn split_flags<const N: usize>(
+    cmd: &str,
+    args: &[String],
+    known: [&str; N],
+) -> Option<([bool; N], Vec<String>)> {
+    let mut set = [false; N];
+    let mut rest = Vec::new();
+    for arg in args {
+        if !arg.starts_with("--") {
+            rest.push(arg.clone());
+            continue;
+        }
+        match known.iter().position(|k| k == arg) {
+            Some(i) => set[i] = true,
+            None => {
+                eprintln!("rotcheck {cmd}: unknown option '{arg}'");
+                return None;
+            }
+        }
+    }
+    Some((set, rest))
+}
+
 fn cmd_verify(args: &[String]) -> ExitCode {
-    let Some(dir) = dir_arg("verify", args) else {
+    let Some(([strict], rest)) = split_flags("verify", args, ["--strict"]) else {
+        return ExitCode::from(2);
+    };
+    let Some(dir) = dir_arg("verify", &rest) else {
         return ExitCode::from(2);
     };
     let root = Path::new(dir);
@@ -163,7 +193,7 @@ fn cmd_verify(args: &[String]) -> ExitCode {
                 line.push_str(&format!(", {} unreadable", s.unreadable));
             }
             println!("{line}");
-            if s.has_problems() {
+            if s.has_problems() || (strict && s.new > 0) {
                 ExitCode::FAILURE
             } else {
                 ExitCode::SUCCESS
@@ -195,18 +225,10 @@ fn load_manifest(dir: &str, manifest_path: &Path) -> Option<Vec<manifest::Entry>
 }
 
 fn cmd_update(args: &[String]) -> ExitCode {
-    let (flags, rest): (Vec<String>, Vec<String>) =
-        args.iter().cloned().partition(|a| a.starts_with("--"));
-    let mut accept_corrupted = false;
-    for flag in &flags {
-        match flag.as_str() {
-            "--accept-corrupted" => accept_corrupted = true,
-            other => {
-                eprintln!("rotcheck update: unknown option '{other}'");
-                return ExitCode::from(2);
-            }
-        }
-    }
+    let Some(([accept_corrupted], rest)) = split_flags("update", args, ["--accept-corrupted"])
+    else {
+        return ExitCode::from(2);
+    };
     let Some(dir) = dir_arg("update", &rest) else {
         return ExitCode::from(2);
     };

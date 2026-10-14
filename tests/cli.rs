@@ -173,3 +173,31 @@ fn update_needs_a_manifest_and_known_options() {
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(fs::read(t.0.join(".rotcheck.sha256")).unwrap(), b"");
 }
+
+#[test]
+fn strict_verify_fails_on_new_files() {
+    let t = TempDir::new("strict");
+    fs::write(t.0.join("a.txt"), "a").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+    fs::write(t.0.join("b.txt"), "b").unwrap();
+
+    assert_eq!(rotcheck(&["verify"], &t.0).status.code(), Some(0));
+    let out = rotcheck(&["verify", "--strict"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stdout(&out).contains("NEW         b.txt\n"));
+    assert_eq!(
+        rotcheck(&["verify", "--bogus"], &t.0).status.code(),
+        Some(2)
+    );
+}
+
+#[test]
+fn manifest_pointing_outside_the_folder_is_rejected() {
+    let t = TempDir::new("escape");
+    let line = format!("{}  ../secret\n", "ab".repeat(32));
+    fs::write(t.0.join(".rotcheck.sha256"), line).unwrap();
+
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("line 1"));
+}

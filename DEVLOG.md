@@ -128,3 +128,22 @@ today because `scan` only opens paths the walker returned, but a clear error
 beats a confusing MISSING. Then `verify --strict` (new files give exit 1).
 After that roadmap item 6: `sha256sum`'s backslash escaping (line starts with
 `\`, and `\\`, `\n`, `\r` in the name) so odd file names stop blocking `init`.
+
+## 2026-10-14
+
+- Manifest parsing is stricter now: absolute paths and paths with empty, `.`
+  or `..` parts are a parse error that names the line (exit 2), not a
+  confusing MISSING. A leading `./` is stripped, so a list made with
+  `find . -type f -exec sha256sum {} +` works as a manifest.
+- Added `verify --strict`: new files also give exit 1.
+- Refactor: `split_flags` in `main.rs` handles `--flags` for both `verify`
+  and `update` (unknown flag gives exit 2).
+- Tests: 2 unit tests in `manifest.rs`, 2 CLI tests (21 unit + 9 CLI).
+  README updated (exit codes, `./` and `..` rules).
+
+**Next:** roadmap item 6, `sha256sum`'s backslash escaping. When a name
+contains `\`, `\n` or `\r`, sha256sum writes the line with a leading `\` and
+escapes them as `\\`, `\n`, `\r`. Do it in `manifest::write_to` and `parse`,
+remove `check_path`, and test a round trip plus parsing real
+`sha256sum` output for such a name. Watch out: `clean_path` must run on the
+*unescaped* path.
