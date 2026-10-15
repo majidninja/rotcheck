@@ -20,7 +20,7 @@ Design rules:
 3. [x] Manifest format + `rotcheck init <dir>` writes `<dir>/.rotcheck.sha256`
 4. [x] `rotcheck verify <dir>`: missing / new / modified / corrupted report
 5. [x] `rotcheck update <dir>`: accept changes
-6. [ ] Paths with newlines/backslashes (sha256sum's `\` escaping convention)
+6. [x] Paths with newlines/backslashes (sha256sum's `\` escaping convention)
 7. [ ] Progress output for big trees, `--quiet`, `--json`?
 8. [ ] Integration tests with temp dirs; release builds / install docs
 
@@ -147,3 +147,27 @@ escapes them as `\\`, `\n`, `\r`. Do it in `manifest::write_to` and `parse`,
 remove `check_path`, and test a round trip plus parsing real
 `sha256sum` output for such a name. Watch out: `clean_path` must run on the
 *unescaped* path.
+
+## 2026-10-15
+
+- Roadmap item 6 done: the manifest uses `sha256sum`'s escaping. If a name
+  contains `\`, `\n` or `\r`, the checksum line starts with `\` and the name
+  is written with `\\`, `\n`, `\r`. `parse` reverses it, and `clean_path`
+  runs on the *unescaped* name, so `..` can't be hidden behind an escape.
+  Any other escape (or a trailing lone `\`) is a parse error. Without the
+  leading `\`, a backslash in the name is taken literally, as sha256sum does.
+  `check_path` is gone; `init` no longer refuses such names.
+- Tests: 4 unit tests in `manifest.rs` (round trip, sha256sum-style lines
+  incl. `*` binary marker, literal backslash, bad escapes) and 1 unix-only
+  CLI test with real files named `back\slash.txt` and `new<LF>line.txt`
+  (24 unit + 10 CLI). README updated.
+- Not checked: the sandbox wouldn't let me create odd-named files from the
+  shell, so I couldn't compare against real GNU `sha256sum` output. The test
+  strings follow the documented coreutils format. Worth checking by hand:
+  `sha256sum -c .rotcheck.sha256` in a folder with such a name.
+
+**Next:** rotcheck's own output still prints names raw: `verify`/`update`
+status lines, `list` and `hash`. A name with a newline would split a report
+line. Use the same escaping there (make `escape_path` `pub`; for `hash`,
+match sha256sum exactly with the leading `\`). Then roadmap item 7
+(`--quiet`, progress for big trees).

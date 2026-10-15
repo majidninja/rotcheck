@@ -84,9 +84,11 @@ them, so you can check the folder without rotcheck too:
 cd ~/Pictures && sha256sum -c .rotcheck.sha256
 ```
 
-`init` won't overwrite an existing manifest. File names that contain a
-newline or a backslash aren't supported yet, and `init` stops with an error
-if it finds one.
+`init` won't overwrite an existing manifest. File names with a backslash,
+newline or carriage return are written the same way `sha256sum` writes them:
+the line starts with `\` and the name has `\\`, `\n` or `\r` in it. So those
+lines still work with `sha256sum -c`, and checksum lists from `sha256sum`
+with such names work as rotcheck manifests.
 
 Check the folder against its manifest, whenever you like:
 

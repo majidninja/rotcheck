@@ -201,3 +201,23 @@ fn manifest_pointing_outside_the_folder_is_rejected() {
     assert_eq!(out.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&out.stderr).contains("line 1"));
 }
+
+#[cfg(unix)]
+#[test]
+fn odd_file_names_survive_init_and_verify() {
+    let t = TempDir::new("odd-names");
+    fs::write(t.0.join("back\\slash.txt"), "a").unwrap();
+    fs::write(t.0.join("new\nline.txt"), "b").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    let manifest = fs::read_to_string(t.0.join(".rotcheck.sha256")).unwrap();
+    assert!(manifest.contains("  back\\\\slash.txt\n"));
+    assert!(manifest.contains("  new\\nline.txt\n"));
+
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(
+        stdout(&out),
+        "rotcheck: 2 ok, 0 corrupted, 0 modified, 0 missing, 0 new\n"
+    );
+}

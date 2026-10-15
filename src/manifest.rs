@@ -39,24 +39,53 @@ pub fn file_meta(path: &Path) -> io::Result<(u64, i64)> {
     Ok((meta.len(), mtime))
 }
 
-/// Paths containing these can't be written as one plain `sha256sum` line.
-/// Escaping support is roadmap item 6; until then they are rejected.
-fn check_path(path: &str) -> io::Result<()> {
-    if path.contains(['\n', '\r', '\\']) {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("file names with newlines or backslashes are not supported yet: {path:?}"),
-        ));
+/// Escapes a name the way GNU `sha256sum` does. If it contains `\`, a
+/// newline or a carriage return, those become `\\`, `\n` and `\r`, and the
+/// caller must start the checksum line with a `\`. Returns `None` when the
+/// name needs no escaping.
+fn escape_path(path: &str) -> Option<String> {
+    if !path.contains(['\\', '\n', '\r']) {
+        return None;
     }
-    Ok(())
+    let mut out = String::with_capacity(path.len() + 2);
+    for c in path.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            c => out.push(c),
+        }
+    }
+    Some(out)
+}
+
+/// Reverses [`escape_path`]. Any escape other than `\\`, `\n` or `\r` is an error.
+fn unescape_path(path: &str) -> Option<String> {
+    let mut out = String::with_capacity(path.len());
+    let mut chars = path.chars();
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            out.push(c);
+            continue;
+        }
+        match chars.next()? {
+            '\\' => out.push('\\'),
+            'n' => out.push('\n'),
+            'r' => out.push('\r'),
+            _ => return None,
+        }
+    }
+    Some(out)
 }
 
 pub fn write_to<W: Write>(entries: &[Entry], mut w: W) -> io::Result<()> {
     writeln!(w, "{HEADER}")?;
     for e in entries {
-        check_path(&e.path)?;
         writeln!(w, "# size={} mtime={}", e.size, e.mtime)?;
-        writeln!(w, "{}  {}", e.hash, e.path)?;
+        match escape_path(&e.path) {
+            Some(escaped) => writeln!(w, "\\{}  {escaped}", e.hash)?,
+            None => writeln!(w, "{}  {}", e.hash, e.path)?,
+        }
     }
     w.flush()
 }
@@ -133,6 +162,11 @@ pub fn parse(text: &str) -> io::Result<Vec<Entry>> {
             }
             continue;
         }
+        // A leading `\` means the file name is escaped (see `escape_path`).
+        let (escaped, line) = match line.strip_prefix('\\') {
+            Some(rest) => (true, rest),
+            None => (false, line),
+        };
         let (hash, path) = line
             .split_once("  ")
             .or_else(|| line.split_once(" *"))
@@ -140,7 +174,12 @@ pub fn parse(text: &str) -> io::Result<Vec<Entry>> {
         if hash.len() != 64 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
             return Err(bad(line_no, "not a SHA-256 hex digest"));
         }
-        let path = clean_path(path).map_err(|msg| bad(line_no, msg))?;
+        let path = if escaped {
+            unescape_path(path).ok_or_else(|| bad(line_no, "bad escape in file name"))?
+        } else {
+            path.to_string()
+        };
+        let path = clean_path(&path).map_err(|msg| bad(line_no, msg))?;
         let (size, mtime) = pending.take().unwrap_or((0, 0));
         entries.push(Entry {
             path,
@@ -215,8 +254,40 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unescapable_paths() {
+    fn odd_names_round_trip_escaped() {
+        let entries = vec![entry("a\\b"), entry("line\nbreak"), entry("cr\rx")];
         let mut buf = Vec::new();
-        assert!(write_to(&[entry("a\nb")], &mut buf).is_err());
+        write_to(&entries, &mut buf).unwrap();
+        let text = String::from_utf8(buf).unwrap();
+        let h = "ab".repeat(32);
+        assert!(text.contains(&format!("\n\\{h}  a\\\\b\n")));
+        assert!(text.contains(&format!("\n\\{h}  line\\nbreak\n")));
+        assert!(text.contains(&format!("\n\\{h}  cr\\rx\n")));
+        assert_eq!(parse(&text).unwrap(), entries);
+    }
+
+    #[test]
+    fn parses_escaped_sha256sum_lines() {
+        // GNU sha256sum output for files named `a\b` and "x<newline>y".
+        let h = "e3".repeat(32);
+        let text = format!("\\{h}  a\\\\b\n\\{h} *x\\ny\n");
+        let got = parse(&text).unwrap();
+        assert_eq!(got[0].path, "a\\b");
+        assert_eq!(got[1].path, "x\ny");
+    }
+
+    #[test]
+    fn backslash_without_line_prefix_is_literal() {
+        let h = "ab".repeat(32);
+        assert_eq!(parse(&format!("{h}  a\\nb\n")).unwrap()[0].path, "a\\nb");
+    }
+
+    #[test]
+    fn rejects_bad_escapes() {
+        let h = "ab".repeat(32);
+        assert!(parse(&format!("\\{h}  a\\qb\n")).is_err());
+        assert!(parse(&format!("\\{h}  trailing\\\n")).is_err());
+        // The unescaped name still has to stay inside the folder.
+        assert!(parse(&format!("\\{h}  ../a\\\\b\n")).is_err());
     }
 }
