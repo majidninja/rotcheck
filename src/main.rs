@@ -65,7 +65,7 @@ fn cmd_hash(paths: &[String]) -> ExitCode {
     for path in paths {
         match hash_file(path) {
             // Two spaces: the same layout `sha256sum` prints and reads.
-            Ok(hex) => println!("{hex}  {path}"),
+            Ok(hex) => println!("{}", manifest::checksum_line(&hex, path)),
             Err(e) => {
                 eprintln!("rotcheck: {path}: {e}");
                 ok = false;
@@ -98,7 +98,7 @@ fn cmd_list(args: &[String]) -> ExitCode {
     match walk::walk(Path::new(dir)) {
         Ok(files) => {
             for f in files {
-                println!("{f}");
+                println!("{}", manifest::display_path(&f));
             }
             ExitCode::SUCCESS
         }
@@ -180,7 +180,7 @@ fn cmd_verify(args: &[String]) -> ExitCode {
     };
     let result = verify::verify(root, &entries, |path, status| {
         if status != verify::Status::Ok {
-            println!("{status:<10}  {path}");
+            println!("{status:<10}  {}", manifest::display_path(path));
         }
     });
     match result {
@@ -239,7 +239,7 @@ fn cmd_update(args: &[String]) -> ExitCode {
     };
     let result = update::update(root, &old, accept_corrupted, |path, status| {
         if status != verify::Status::Ok {
-            println!("{status:<10}  {path}");
+            println!("{status:<10}  {}", manifest::display_path(path));
         }
     })
     .and_then(|(entries, summary)| {

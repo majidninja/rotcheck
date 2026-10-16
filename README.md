@@ -88,7 +88,9 @@ cd ~/Pictures && sha256sum -c .rotcheck.sha256
 newline or carriage return are written the same way `sha256sum` writes them:
 the line starts with `\` and the name has `\\`, `\n` or `\r` in it. So those
 lines still work with `sha256sum -c`, and checksum lists from `sha256sum`
-with such names work as rotcheck manifests.
+with such names work as rotcheck manifests. rotcheck's own output (`list`,
+`hash`, and the `verify`/`update` reports) escapes these names the same way,
+so every file is always on exactly one line.
 
 Check the folder against its manifest, whenever you like:
 

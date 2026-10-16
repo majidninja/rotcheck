@@ -220,4 +220,25 @@ fn odd_file_names_survive_init_and_verify() {
         stdout(&out),
         "rotcheck: 2 ok, 0 corrupted, 0 modified, 0 missing, 0 new\n"
     );
+
+    // Reports keep one file per line, using the same escapes.
+    fs::write(t.0.join("new\nline.txt"), "changed").unwrap();
+    fs::write(t.0.join("added\r.txt"), "c").unwrap();
+    let out = stdout(&rotcheck(&["verify"], &t.0));
+    assert!(out.contains("MODIFIED    new\\nline.txt\n"), "{out}");
+    assert!(out.contains("NEW         added\\r.txt\n"), "{out}");
+
+    let out = stdout(&rotcheck(&["list"], &t.0));
+    assert_eq!(out, "added\\r.txt\nback\\\\slash.txt\nnew\\nline.txt\n");
+
+    let out = Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+        .arg("hash")
+        .arg(t.0.join("back\\slash.txt"))
+        .output()
+        .unwrap();
+    let out = stdout(&out);
+    assert!(
+        out.starts_with('\\') && out.ends_with("/back\\\\slash.txt\n"),
+        "{out}"
+    );
 }

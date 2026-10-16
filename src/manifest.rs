@@ -11,6 +11,7 @@
 //! the file can still be checked with standard tools. Each `# size=… mtime=…`
 //! line describes the checksum line right after it.
 
+use std::borrow::Cow;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
@@ -78,14 +79,30 @@ fn unescape_path(path: &str) -> Option<String> {
     Some(out)
 }
 
+/// A name as rotcheck prints it in reports: escaped like [`escape_path`]
+/// when needed, so one file is always one line. Every `\` in the output is
+/// itself escaped, so the original name can always be recovered.
+pub fn display_path(path: &str) -> Cow<'_, str> {
+    match escape_path(path) {
+        Some(escaped) => Cow::Owned(escaped),
+        None => Cow::Borrowed(path),
+    }
+}
+
+/// One `sha256sum`-format line (without the newline), with the leading `\`
+/// marker when the name had to be escaped.
+pub fn checksum_line(hash: &str, path: &str) -> String {
+    match escape_path(path) {
+        Some(escaped) => format!("\\{hash}  {escaped}"),
+        None => format!("{hash}  {path}"),
+    }
+}
+
 pub fn write_to<W: Write>(entries: &[Entry], mut w: W) -> io::Result<()> {
     writeln!(w, "{HEADER}")?;
     for e in entries {
         writeln!(w, "# size={} mtime={}", e.size, e.mtime)?;
-        match escape_path(&e.path) {
-            Some(escaped) => writeln!(w, "\\{}  {escaped}", e.hash)?,
-            None => writeln!(w, "{}  {}", e.hash, e.path)?,
-        }
+        writeln!(w, "{}", checksum_line(&e.hash, &e.path))?;
     }
     w.flush()
 }
@@ -274,6 +291,15 @@ mod tests {
         let got = parse(&text).unwrap();
         assert_eq!(got[0].path, "a\\b");
         assert_eq!(got[1].path, "x\ny");
+    }
+
+    #[test]
+    fn report_names_are_escaped_only_when_needed() {
+        assert_eq!(display_path("a/b.txt"), "a/b.txt");
+        assert_eq!(display_path("a\nb\\c"), "a\\nb\\\\c");
+        let hash = "ab".repeat(32);
+        assert_eq!(checksum_line(&hash, "x"), format!("{hash}  x"));
+        assert_eq!(checksum_line(&hash, "x\ny"), format!("\\{hash}  x\\ny"));
     }
 
     #[test]

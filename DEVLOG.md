@@ -171,3 +171,24 @@ status lines, `list` and `hash`. A name with a newline would split a report
 line. Use the same escaping there (make `escape_path` `pub`; for `hash`,
 match sha256sum exactly with the leading `\`). Then roadmap item 7
 (`--quiet`, progress for big trees).
+
+## 2026-10-16
+
+- rotcheck's output now escapes odd names too, so one file is always one
+  line. New in `manifest.rs`: `display_path` (escapes `\`, `\n`, `\r` only
+  when the name needs it) and `checksum_line` (sha256sum line with the
+  leading `\` marker). `write_to` uses `checksum_line`. `hash` prints
+  through `checksum_line`, so it matches `sha256sum` for such names.
+  `list` and the `verify`/`update` status lines use `display_path` (no
+  leading `\` marker there; since every `\` is escaped, the name can still
+  be recovered).
+- Tests: 1 unit test, and the unix-only CLI odd-names test now also covers
+  the verify report (MODIFIED/NEW), `list` and `hash` (25 unit + 10 CLI).
+  README updated.
+- Note for later: the `rotcheck()` helper in `tests/cli.rs` always adds the
+  dir as the last argument, so `hash` tests call the binary directly.
+
+**Next:** roadmap item 7. Start with `--quiet` for `verify` (print only the
+problem lines, no summary; or nothing at all, just the exit code?). Pick one
+and write it down. Then a simple progress line on stderr for big trees (only
+when stderr is a terminal; std has `IsTerminal`).
