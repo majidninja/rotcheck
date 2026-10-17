@@ -157,6 +157,15 @@ Handy for cron jobs and scripts:
 - `2`: rotcheck couldn't do the check (bad arguments, no manifest, unreadable
   folder).
 
+For cron, add `--quiet`: `verify` then prints only the files that make it
+fail (no summary line, and `NEW` files only with `--strict`). No output means
+all is well, so cron only mails you when there's something to look at:
+
+```sh
+# every Sunday at 3am
+0 3 * * 0  rotcheck verify --quiet ~/Pictures
+```
+
 `update` uses the same codes: `0` when the manifest now matches the folder,
 `1` when it left a corrupted or unreadable file as it was.
 

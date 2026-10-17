@@ -18,6 +18,7 @@ USAGE:
     rotcheck init [DIR]        Record checksums for DIR in DIR/.rotcheck.sha256
     rotcheck verify [DIR]      Check DIR against its manifest
         --strict               Also fail (exit 1) when there are new files
+        --quiet                Print only the files that make it fail, no summary
     rotcheck update [DIR]      Accept added, edited and removed files into the manifest
         --accept-corrupted     Also re-record files that look corrupted
     rotcheck help              Show this message
@@ -167,7 +168,7 @@ fn split_flags<const N: usize>(
 }
 
 fn cmd_verify(args: &[String]) -> ExitCode {
-    let Some(([strict], rest)) = split_flags("verify", args, ["--strict"]) else {
+    let Some(([strict, quiet], rest)) = split_flags("verify", args, ["--strict", "--quiet"]) else {
         return ExitCode::from(2);
     };
     let Some(dir) = dir_arg("verify", &rest) else {
@@ -179,12 +180,27 @@ fn cmd_verify(args: &[String]) -> ExitCode {
         return ExitCode::from(2);
     };
     let result = verify::verify(root, &entries, |path, status| {
-        if status != verify::Status::Ok {
+        let show = match status {
+            verify::Status::Ok => false,
+            // With --quiet only lines that affect the exit code are shown,
+            // so a silent run is a clean run.
+            verify::Status::New => strict || !quiet,
+            _ => true,
+        };
+        if show {
             println!("{status:<10}  {}", manifest::display_path(path));
         }
     });
     match result {
         Ok(s) => {
+            let failed = s.has_problems() || (strict && s.new > 0);
+            if quiet {
+                return if failed {
+                    ExitCode::FAILURE
+                } else {
+                    ExitCode::SUCCESS
+                };
+            }
             let mut line = format!(
                 "rotcheck: {} ok, {} corrupted, {} modified, {} missing, {} new",
                 s.ok, s.corrupted, s.modified, s.missing, s.new
@@ -193,7 +209,7 @@ fn cmd_verify(args: &[String]) -> ExitCode {
                 line.push_str(&format!(", {} unreadable", s.unreadable));
             }
             println!("{line}");
-            if s.has_problems() || (strict && s.new > 0) {
+            if failed {
                 ExitCode::FAILURE
             } else {
                 ExitCode::SUCCESS

@@ -242,3 +242,25 @@ fn odd_file_names_survive_init_and_verify() {
         "{out}"
     );
 }
+
+#[test]
+fn verify_quiet_prints_only_failures() {
+    let t = TempDir::new("quiet");
+    fs::write(t.0.join("a.txt"), "a").unwrap();
+    fs::write(t.0.join("b.txt"), "b").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    // A new file alone: nothing printed, exit 0. With --strict it counts.
+    fs::write(t.0.join("new.txt"), "new").unwrap();
+    let out = rotcheck(&["verify", "--quiet"], &t.0);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(stdout(&out), "");
+    let out = rotcheck(&["verify", "--quiet", "--strict"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "NEW         new.txt\n");
+
+    fs::remove_file(t.0.join("b.txt")).unwrap();
+    let out = rotcheck(&["verify", "--quiet"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "MISSING     b.txt\n");
+}

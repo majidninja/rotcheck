@@ -192,3 +192,18 @@ match sha256sum exactly with the leading `\`). Then roadmap item 7
 problem lines, no summary; or nothing at all, just the exit code?). Pick one
 and write it down. Then a simple progress line on stderr for big trees (only
 when stderr is a terminal; std has `IsTerminal`).
+
+## 2026-10-17
+
+- Roadmap item 7, part 1: `verify --quiet`. Decision: print only the lines
+  that affect the exit code, and no summary line (like `sha256sum -c
+  --quiet`). So `NEW` lines show only with `--strict`. A silent run means
+  exit 0, which is what cron wants (it mails only when there is output).
+  Errors (exit 2) still go to stderr.
+- Test: 1 CLI test (new file alone is silent/exit 0, shown with `--strict`,
+  missing file shown/exit 1) (25 unit + 11 CLI). README: cron example.
+
+**Next:** progress line on stderr for big trees in `init`/`verify`/`update`
+(only when stderr is a terminal, `std::io::IsTerminal`; never with
+`--quiet`). Something like `\r[1234/5678] hashing...` redrawn at most a few
+times a second, cleared at the end. Maybe `update --quiet` too.
