@@ -189,4 +189,4 @@ a terminal, so it never shows up in logs, pipes or cron mail. `verify
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE).
