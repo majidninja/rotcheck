@@ -207,3 +207,21 @@ when stderr is a terminal; std has `IsTerminal`).
 (only when stderr is a terminal, `std::io::IsTerminal`; never with
 `--quiet`). Something like `\r[1234/5678] hashing...` redrawn at most a few
 times a second, cleared at the end. Maybe `update --quiet` too.
+
+## 2026-10-18
+
+- Roadmap item 7, part 2: progress line. New `src/progress.rs`: a
+  `Progress` counter that draws `\r ESC[K rotcheck: ...` on stderr at most
+  every 100 ms, only when stderr is a terminal (`std::io::IsTerminal`).
+  `clear()` wipes it before each status line so report lines stay clean;
+  `Drop` clears it too. `init` knows the total (`hashing [n/total]`);
+  `verify`/`update` show `checked n files` (no total up front, since new
+  files are only found during the scan). `verify --quiet` disables it.
+- Tests: 2 unit tests (line text; disabled counter never draws)
+  (27 unit + 11 CLI). README: "Progress" section.
+- Not checked: the sandbox blocked `script`, so I couldn't watch it in a
+  real pty. Try `rotcheck init` on a big folder by hand.
+
+**Next:** have `verify::scan` tell the caller the total (entries + new
+files) before hashing, so verify/update can show `[n/total]` too. Then
+maybe `update --quiet`, and look at roadmap item 8.

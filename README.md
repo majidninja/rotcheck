@@ -179,6 +179,14 @@ Such a list has no sizes or timestamps, so any changed file shows up as
 prints them) is fine. Absolute paths and paths with `..` are refused, so a
 manifest can never make rotcheck look outside the folder.
 
+### Progress
+
+On big folders, `init`, `verify` and `update` show a running count of files
+on the last line of the terminal (`rotcheck: hashing [1234/5678]`). It goes
+to stderr, is wiped before each report line, and only appears when stderr is
+a terminal, so it never shows up in logs, pipes or cron mail. `verify
+--quiet` never shows it.
+
 ## License
 
 MIT
