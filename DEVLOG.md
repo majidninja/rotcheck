@@ -225,3 +225,20 @@ times a second, cleared at the end. Maybe `update --quiet` too.
 **Next:** have `verify::scan` tell the caller the total (entries + new
 files) before hashing, so verify/update can show `[n/total]` too. Then
 maybe `update --quiet`, and look at roadmap item 8.
+
+## 2026-10-19
+
+- Progress now shows `[n/total]` for `verify` and `update` too, not just
+  `init`. `verify::scan` (and so `verify`/`update`) takes a new `total`
+  callback, called once after the walk and before any hashing, with the
+  number of `report` calls to come (unique manifest entries + new files).
+- `Progress` keeps its state in `Cell`s and its methods take `&self`, so
+  the `total` closure and the `report` closure can both borrow it. New
+  `Progress::set_total`.
+- Tests: `verify_reports_every_kind` checks the announced total equals the
+  number of reports; the disabled-counter test covers `set_total`
+  (27 unit + 11 CLI). README's "Progress" section already described this.
+
+**Next:** `update --quiet` (print nothing on success, for scripts), then
+roadmap item 8: release build notes / install docs (`cargo install --path .`,
+static musl build?), and decide whether `--json` (item 7) is worth it.

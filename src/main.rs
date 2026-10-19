@@ -180,21 +180,26 @@ fn cmd_verify(args: &[String]) -> ExitCode {
     let Some(entries) = load_manifest(dir, &manifest_path) else {
         return ExitCode::from(2);
     };
-    let mut progress = progress::Progress::new(!quiet, None);
-    let result = verify::verify(root, &entries, |path, status| {
-        progress.tick();
-        let show = match status {
-            verify::Status::Ok => false,
-            // With --quiet only lines that affect the exit code are shown,
-            // so a silent run is a clean run.
-            verify::Status::New => strict || !quiet,
-            _ => true,
-        };
-        if show {
-            progress.clear();
-            println!("{status:<10}  {}", manifest::display_path(path));
-        }
-    });
+    let progress = progress::Progress::new(!quiet, None);
+    let result = verify::verify(
+        root,
+        &entries,
+        |n| progress.set_total(n),
+        |path, status| {
+            progress.tick();
+            let show = match status {
+                verify::Status::Ok => false,
+                // With --quiet only lines that affect the exit code are shown,
+                // so a silent run is a clean run.
+                verify::Status::New => strict || !quiet,
+                _ => true,
+            };
+            if show {
+                progress.clear();
+                println!("{status:<10}  {}", manifest::display_path(path));
+            }
+        },
+    );
     progress.clear();
     match result {
         Ok(s) => {
@@ -258,14 +263,20 @@ fn cmd_update(args: &[String]) -> ExitCode {
     let Some(old) = load_manifest(dir, &manifest_path) else {
         return ExitCode::from(2);
     };
-    let mut progress = progress::Progress::new(true, None);
-    let result = update::update(root, &old, accept_corrupted, |path, status| {
-        progress.tick();
-        if status != verify::Status::Ok {
-            progress.clear();
-            println!("{status:<10}  {}", manifest::display_path(path));
-        }
-    });
+    let progress = progress::Progress::new(true, None);
+    let result = update::update(
+        root,
+        &old,
+        accept_corrupted,
+        |n| progress.set_total(n),
+        |path, status| {
+            progress.tick();
+            if status != verify::Status::Ok {
+                progress.clear();
+                println!("{status:<10}  {}", manifest::display_path(path));
+            }
+        },
+    );
     progress.clear();
     let result = result.and_then(|(entries, summary)| {
         manifest::save(&entries, &manifest_path)?;
@@ -309,7 +320,7 @@ fn cmd_update(args: &[String]) -> ExitCode {
 /// Hashes every file under `root`.
 fn build_entries(root: &Path) -> io::Result<Vec<manifest::Entry>> {
     let files = walk::walk(root)?;
-    let mut progress = progress::Progress::new(true, Some(files.len()));
+    let progress = progress::Progress::new(true, Some(files.len()));
     let mut entries = Vec::new();
     for rel in files {
         progress.tick();

@@ -88,24 +88,33 @@ pub fn classify(entry: &Entry, size: u64, mtime: i64, hash: &str) -> Status {
 }
 
 /// Checks `root` against `entries`, calling `report` once per file: manifest
-/// entries in manifest order first, then new files in path order.
-pub fn verify<F: FnMut(&str, Status)>(
+/// entries in manifest order first, then new files in path order. Before the
+/// first `report`, `total` is told how many calls there will be.
+pub fn verify<T: FnOnce(usize), F: FnMut(&str, Status)>(
     root: &Path,
     entries: &[Entry],
+    total: T,
     mut report: F,
 ) -> io::Result<Summary> {
-    scan(root, entries, |path, status, _| report(path, status))
+    scan(root, entries, total, |path, status, _| report(path, status))
 }
 
 /// Like [`verify`], but also hands `report` what is on disk right now for
 /// every file that was hashed (ok, modified or corrupted), so `update` does
 /// not have to read those files a second time.
-pub fn scan<F: FnMut(&str, Status, Option<Entry>)>(
+pub fn scan<T: FnOnce(usize), F: FnMut(&str, Status, Option<Entry>)>(
     root: &Path,
     entries: &[Entry],
+    total: T,
     mut report: F,
 ) -> io::Result<Summary> {
     let on_disk: BTreeSet<String> = walk::walk(root)?.into_iter().collect();
+    let listed: BTreeSet<&str> = entries.iter().map(|e| e.path.as_str()).collect();
+    let new_count = on_disk
+        .iter()
+        .filter(|p| !listed.contains(p.as_str()))
+        .count();
+    total(listed.len() + new_count);
     let mut known = BTreeSet::new();
     let mut summary = Summary::default();
     for entry in entries {
@@ -195,7 +204,15 @@ mod tests {
             .mtime = mtime;
 
         let mut seen = Vec::new();
-        let summary = verify(root, &entries, |p, s| seen.push((p.to_string(), s))).unwrap();
+        let mut announced = None;
+        let summary = verify(
+            root,
+            &entries,
+            |n| announced = Some(n),
+            |p, s| seen.push((p.to_string(), s)),
+        )
+        .unwrap();
+        assert_eq!(announced, Some(seen.len()));
         assert_eq!(
             seen,
             [
@@ -225,7 +242,7 @@ mod tests {
         let tmp = TempDir::new("verify-clean");
         fs::write(tmp.0.join("a"), "a").unwrap();
         let entries = crate::build_entries(&tmp.0).unwrap();
-        let summary = verify(&tmp.0, &entries, |_, s| assert_eq!(s, Status::Ok)).unwrap();
+        let summary = verify(&tmp.0, &entries, |_| {}, |_, s| assert_eq!(s, Status::Ok)).unwrap();
         assert_eq!(summary.ok, 1);
         assert!(!summary.has_problems());
     }

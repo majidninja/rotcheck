@@ -13,16 +13,18 @@ use crate::verify::{self, Status, Summary};
 
 /// Returns the entries for the new manifest, sorted by path, and a summary of
 /// what was found. `report` is called once per file, as in `verify`; a new
-/// file that can't be read is reported as unreadable and left out.
-pub fn update<F: FnMut(&str, Status)>(
+/// file that can't be read is reported as unreadable and left out. `total`
+/// gets the number of files up front, as in `verify`.
+pub fn update<T: FnOnce(usize), F: FnMut(&str, Status)>(
     root: &Path,
     old: &[Entry],
     accept_corrupted: bool,
+    total: T,
     mut report: F,
 ) -> io::Result<(Vec<Entry>, Summary)> {
     let mut entries = Vec::new();
     let mut unreadable_new = 0;
-    let mut summary = verify::scan(root, old, |path, status, current| {
+    let mut summary = verify::scan(root, old, total, |path, status, current| {
         let mut status = status;
         let previous = || old.iter().find(|e| e.path == path).cloned();
         let keep = match status {
@@ -83,7 +85,7 @@ mod tests {
     #[test]
     fn accepts_changes_but_keeps_corrupted_checksum() {
         let (tmp, old) = changed_tree("update-keep");
-        let (new, summary) = update(&tmp.0, &old, false, |_, _| {}).unwrap();
+        let (new, summary) = update(&tmp.0, &old, false, |_| {}, |_, _| {}).unwrap();
         let paths: Vec<&str> = new.iter().map(|e| e.path.as_str()).collect();
         assert_eq!(paths, ["added.txt", "edited.txt", "rotten.bin", "same.txt"]);
         assert_eq!(find(&new, "rotten.bin"), find(&old, "rotten.bin"));
@@ -93,15 +95,15 @@ mod tests {
         assert_eq!((summary.ok, summary.corrupted), (1, 1));
 
         // The corrupted file is still flagged afterwards; nothing else is.
-        let after = verify::verify(&tmp.0, &new, |_, _| {}).unwrap();
+        let after = verify::verify(&tmp.0, &new, |_| {}, |_, _| {}).unwrap();
         assert_eq!((after.ok, after.corrupted), (3, 1));
     }
 
     #[test]
     fn accept_corrupted_records_the_new_content() {
         let (tmp, old) = changed_tree("update-accept");
-        let (new, _) = update(&tmp.0, &old, true, |_, _| {}).unwrap();
-        let after = verify::verify(&tmp.0, &new, |_, _| {}).unwrap();
+        let (new, _) = update(&tmp.0, &old, true, |_| {}, |_, _| {}).unwrap();
+        let after = verify::verify(&tmp.0, &new, |_| {}, |_, _| {}).unwrap();
         assert_eq!(after.ok, 4);
         assert_eq!(after.new, 0);
         assert!(!after.has_problems());
@@ -114,7 +116,7 @@ mod tests {
         let mut old = crate::build_entries(&tmp.0).unwrap();
         old[0].size = 0;
         old[0].mtime = 0;
-        let (new, summary) = update(&tmp.0, &old, false, |_, _| {}).unwrap();
+        let (new, summary) = update(&tmp.0, &old, false, |_| {}, |_, _| {}).unwrap();
         assert_eq!(summary.ok, 1);
         assert_eq!(new[0].size, 3);
         assert_ne!(new[0].mtime, 0);
