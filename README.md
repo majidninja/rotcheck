@@ -167,7 +167,9 @@ all is well, so cron only mails you when there's something to look at:
 ```
 
 `update` uses the same codes: `0` when the manifest now matches the folder,
-`1` when it left a corrupted or unreadable file as it was.
+`1` when it left a corrupted or unreadable file as it was. `update --quiet`
+works like `verify --quiet`: it prints only the corrupted or unreadable files
+(plus the hint on stderr), and nothing at all when the update went fine.
 
 ```sh
 rotcheck verify /mnt/backup/photos || echo "check the photo backup!"

@@ -264,3 +264,25 @@ fn verify_quiet_prints_only_failures() {
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(stdout(&out), "MISSING     b.txt\n");
 }
+
+#[test]
+fn update_quiet_is_silent_on_success() {
+    let t = TempDir::new("update-quiet");
+    fs::write(t.0.join("a.txt"), "a").unwrap();
+    fs::write(t.0.join("b.txt"), "b").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    // Added and removed files are accepted without a word.
+    fs::write(t.0.join("new.txt"), "new").unwrap();
+    fs::remove_file(t.0.join("b.txt")).unwrap();
+    let out = rotcheck(&["update", "--quiet"], &t.0);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(stdout(&out), "");
+    assert!(out.stderr.is_empty());
+
+    // The manifest really was updated.
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(0));
+    let out = stdout(&out);
+    assert!(out.contains("2 ok, 0 corrupted"), "{out}");
+}

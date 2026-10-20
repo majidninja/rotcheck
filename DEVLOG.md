@@ -242,3 +242,17 @@ maybe `update --quiet`, and look at roadmap item 8.
 **Next:** `update --quiet` (print nothing on success, for scripts), then
 roadmap item 8: release build notes / install docs (`cargo install --path .`,
 static musl build?), and decide whether `--json` (item 7) is worth it.
+
+## 2026-10-20
+
+- `update --quiet`, matching `verify --quiet`: no progress line, no summary,
+  and only the status lines that affect the exit code (`CORRUPTED` unless
+  `--accept-corrupted`, and `UNREADABLE`). The stderr hint about corrupted
+  files still shows, since it only appears on failure. So a silent
+  `update --quiet` means the manifest now matches the folder.
+- Test: 1 CLI test (added + removed files: no output, exit 0, then
+  `verify` is clean) (27 unit + 12 CLI). README and `help` text updated.
+
+**Next:** roadmap item 8: install docs (`cargo install --path .`, maybe a
+static musl build note), and decide whether `--json` output (item 7) is
+worth it or should be dropped from the roadmap.

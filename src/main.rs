@@ -22,6 +22,7 @@ USAGE:
         --quiet                Print only the files that make it fail, no summary
     rotcheck update [DIR]      Accept added, edited and removed files into the manifest
         --accept-corrupted     Also re-record files that look corrupted
+        --quiet                Print only the files that make it fail, no summary
     rotcheck help              Show this message
     rotcheck --version         Show version
 ";
@@ -251,7 +252,8 @@ fn load_manifest(dir: &str, manifest_path: &Path) -> Option<Vec<manifest::Entry>
 }
 
 fn cmd_update(args: &[String]) -> ExitCode {
-    let Some(([accept_corrupted], rest)) = split_flags("update", args, ["--accept-corrupted"])
+    let Some(([accept_corrupted, quiet], rest)) =
+        split_flags("update", args, ["--accept-corrupted", "--quiet"])
     else {
         return ExitCode::from(2);
     };
@@ -263,7 +265,7 @@ fn cmd_update(args: &[String]) -> ExitCode {
     let Some(old) = load_manifest(dir, &manifest_path) else {
         return ExitCode::from(2);
     };
-    let progress = progress::Progress::new(true, None);
+    let progress = progress::Progress::new(!quiet, None);
     let result = update::update(
         root,
         &old,
@@ -271,7 +273,14 @@ fn cmd_update(args: &[String]) -> ExitCode {
         |n| progress.set_total(n),
         |path, status| {
             progress.tick();
-            if status != verify::Status::Ok {
+            let show = match status {
+                verify::Status::Ok => false,
+                // Like `verify --quiet`: only lines that affect the exit code.
+                verify::Status::Corrupted => !(quiet && accept_corrupted),
+                verify::Status::Unreadable => true,
+                _ => !quiet,
+            };
+            if show {
                 progress.clear();
                 println!("{status:<10}  {}", manifest::display_path(path));
             }
@@ -300,7 +309,9 @@ fn cmd_update(args: &[String]) -> ExitCode {
     if s.unreadable > 0 {
         line.push_str(&format!(", {} unreadable", s.unreadable));
     }
-    println!("{line}");
+    if !quiet {
+        println!("{line}");
+    }
     let refused = s.corrupted > 0 && !accept_corrupted;
     if refused {
         eprintln!(
