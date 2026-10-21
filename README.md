@@ -30,6 +30,25 @@ cd rotcheck
 cargo install --path .
 ```
 
+That builds an optimized binary and puts it in `~/.cargo/bin`, which rustup
+adds to your `PATH`. Check it worked with `rotcheck --version`.
+
+rotcheck has no dependencies outside the Rust standard library, so the build
+needs no network access once you have the source. If you'd rather not install
+anything, build it and copy the single file wherever you like:
+
+```sh
+cargo build --release
+cp target/release/rotcheck /usr/local/bin/   # or ~/bin, or a USB stick
+```
+
+The binary is small (around 400 KB on Linux) and needs nothing else at run
+time. Keeping a copy next to an archive, together with this source, means
+you can still check it in ten years.
+
+To remove it again: `cargo uninstall rotcheck`. Manifests are plain text
+files, so nothing else is left behind.
+
 ## Usage
 
 Print checksums for some files:
@@ -180,6 +199,20 @@ Such a list has no sizes or timestamps, so any changed file shows up as
 `MODIFIED`. A leading `./` on paths (as `find . -type f -exec sha256sum {} +`
 prints them) is fine. Absolute paths and paths with `..` are refused, so a
 manifest can never make rotcheck look outside the folder.
+
+### Using the output in scripts
+
+The report lines from `verify` and `update` are meant to be stable: one file
+per line, the status word, spaces up to column 13, then the path (escaped as
+described above). So plain shell tools are enough, for example to list just
+the corrupted files:
+
+```sh
+rotcheck verify --quiet ~/Pictures | grep '^CORRUPTED' | cut -c13-
+```
+
+The summary line and error messages start with `rotcheck:`, and errors go to
+stderr.
 
 ### Progress
 

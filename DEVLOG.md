@@ -21,8 +21,8 @@ Design rules:
 4. [x] `rotcheck verify <dir>`: missing / new / modified / corrupted report
 5. [x] `rotcheck update <dir>`: accept changes
 6. [x] Paths with newlines/backslashes (sha256sum's `\` escaping convention)
-7. [ ] Progress output for big trees, `--quiet`, `--json`?
-8. [ ] Integration tests with temp dirs; release builds / install docs
+7. [x] Progress output for big trees, `--quiet` (`--json` dropped, see 2026-10-21)
+8. [x] Integration tests with temp dirs; release builds / install docs
 
 ## 2026-10-09
 
@@ -256,3 +256,26 @@ static musl build?), and decide whether `--json` (item 7) is worth it.
 **Next:** roadmap item 8: install docs (`cargo install --path .`, maybe a
 static musl build note), and decide whether `--json` output (item 7) is
 worth it or should be dropped from the roadmap.
+
+## 2026-10-21
+
+- Roadmap item 8: `[profile.release]` with `lto`, `codegen-units = 1`,
+  `strip`. Release binary is about 390 KB on Linux.
+- README "Install": what `cargo install --path .` does, building offline,
+  copying the single binary next to an archive, `cargo uninstall`. I left
+  out a musl/static build note because I couldn't test it here.
+- Decided against `--json`. The report lines are already one file per line
+  with a fixed layout (status padded to 10, two spaces, escaped path at
+  column 13), which `grep`/`cut` handle fine. A JSON format would be a
+  second format to keep stable. README now has "Using the output in
+  scripts", which promises this layout.
+- Test: `report_paths_start_at_column_13` checks the `cut -c13-` recipe
+  from the README (27 unit + 13 CLI).
+- Roadmap items 7 and 8 are done, so the original roadmap is finished.
+
+**Next:** pick the next round of work. Ideas: `rotcheck verify --since`
+or a way to skip hashing files whose size/mtime changed (faster "quick"
+check)? Excluding paths (`.rotcheck-ignore`)? Releasing 1.0 with a
+CHANGELOG and a written-down manifest format spec (FORMAT.md) so the format
+is clearly stable. FORMAT.md is probably the most valuable for the
+two-year goal.

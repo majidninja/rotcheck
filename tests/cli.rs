@@ -286,3 +286,20 @@ fn update_quiet_is_silent_on_success() {
     let out = stdout(&out);
     assert!(out.contains("2 ok, 0 corrupted"), "{out}");
 }
+
+#[test]
+fn report_paths_start_at_column_13() {
+    // The README promises `cut -c13-` gives the path for every status word.
+    let t = TempDir::new("columns");
+    fs::write(t.0.join("gone.txt"), "x").unwrap();
+    fs::write(t.0.join("edit.txt"), "x").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+    fs::remove_file(t.0.join("gone.txt")).unwrap();
+    fs::write(t.0.join("edit.txt"), "longer").unwrap();
+    fs::write(t.0.join("fresh.txt"), "x").unwrap();
+
+    let out = rotcheck(&["verify", "--strict", "--quiet"], &t.0);
+    let out = stdout(&out);
+    let paths: Vec<&str> = out.lines().map(|l| &l[12..]).collect();
+    assert_eq!(paths, ["edit.txt", "gone.txt", "fresh.txt"]);
+}

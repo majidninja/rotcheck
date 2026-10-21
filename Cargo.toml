@@ -6,3 +6,9 @@ description = "Detect missing, changed and silently corrupted files with plain s
 license = "MIT"
 
 [dependencies]
+
+# Smaller, faster release binary (`cargo build --release`, `cargo install`).
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
