@@ -111,6 +111,9 @@ with such names work as rotcheck manifests. rotcheck's own output (`list`,
 `hash`, and the `verify`/`update` reports) escapes these names the same way,
 so every file is always on exactly one line.
 
+The full manifest format is written down in [FORMAT.md](FORMAT.md), in case
+you ever want to read or write manifests with something other than rotcheck.
+
 Check the folder against its manifest, whenever you like:
 
 ```sh

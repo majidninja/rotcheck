@@ -19,6 +19,9 @@ use std::time::UNIX_EPOCH;
 
 pub const HEADER: &str = "# rotcheck manifest v1";
 
+/// The part of [`HEADER`] before the version number.
+const HEADER_PREFIX: &str = "# rotcheck manifest v";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
     /// Relative path with `/` separators.
@@ -174,6 +177,17 @@ pub fn parse(text: &str) -> io::Result<Vec<Entry>> {
             continue;
         }
         if let Some(rest) = line.strip_prefix('#') {
+            // A future format version may mean something different by the
+            // same lines, so refuse it rather than guess (see FORMAT.md).
+            if let Some(version) = line.strip_prefix(HEADER_PREFIX) {
+                if version.trim_end() != "1" {
+                    return Err(bad(
+                        line_no,
+                        "manifest format version is not supported by this rotcheck",
+                    ));
+                }
+                continue;
+            }
             if rest.trim_start().starts_with("size=") {
                 pending = Some(parse_meta(rest).ok_or_else(|| bad(line_no, "bad metadata"))?);
             }
@@ -239,6 +253,32 @@ mod tests {
         assert_eq!(got[0].hash, "ab".repeat(32));
         assert_eq!(got[1].path, "y");
         assert_eq!((got[0].size, got[0].mtime), (0, 0));
+    }
+
+    #[test]
+    fn format_md_example_parses() {
+        let spec = include_str!("../FORMAT.md");
+        let example = spec
+            .split("## Example\n\n```text\n")
+            .nth(1)
+            .and_then(|rest| rest.split("```").next())
+            .expect("FORMAT.md has an example block");
+        let got = parse(example).unwrap();
+        assert_eq!(got.len(), 2);
+        assert_eq!((got[0].size, got[0].mtime), (48213, 1_700_000_000));
+        assert_eq!(got[0].path, "2024/beach.jpg");
+        assert_eq!(got[1].path, "odd\nname.txt");
+    }
+
+    #[test]
+    fn refuses_other_format_versions() {
+        let line = format!("{}  a\n", "ab".repeat(32));
+        assert!(parse(&format!("{HEADER}\n{line}")).is_ok());
+        assert!(parse(&format!("{HEADER} \n{line}")).is_ok());
+        for header in ["# rotcheck manifest v2", "# rotcheck manifest v"] {
+            let err = parse(&format!("{header}\n{line}")).unwrap_err();
+            assert!(err.to_string().contains("line 1"), "{err}");
+        }
     }
 
     #[test]

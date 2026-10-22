@@ -279,3 +279,21 @@ check)? Excluding paths (`.rotcheck-ignore`)? Releasing 1.0 with a
 CHANGELOG and a written-down manifest format spec (FORMAT.md) so the format
 is clearly stable. FORMAT.md is probably the most valuable for the
 two-year goal.
+
+## 2026-10-22
+
+- Wrote FORMAT.md: a spec for the v1 manifest (encoding, header, metadata
+  lines, `sha256sum` checksum lines and escaping, path rules, what a
+  manifest covers, and a stability promise: v1 only ever gains optional
+  `key=value` metadata fields; anything bigger gets a new header version).
+  Linked from the README.
+- Code change to match the spec: a `# rotcheck manifest vN` header with
+  N other than 1 is now refused instead of read as v1, so this rotcheck
+  can't misread a future format.
+- Tests: `refuses_other_format_versions`, and `format_md_example_parses`,
+  which pulls the example out of FORMAT.md with `include_str!` so the spec
+  and the parser can't drift apart (29 unit + 13 CLI).
+
+**Next:** a CHANGELOG.md and bump to 1.0.0 now that the format is written
+down. After that: an ignore mechanism (`.rotcheckignore`?) or a quick
+size/mtime-only check mode.
