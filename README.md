@@ -225,6 +225,14 @@ to stderr, is wiped before each report line, and only appears when stderr is
 a terminal, so it never shows up in logs, pipes or cron mail. `verify
 --quiet` never shows it.
 
+## Stability
+
+rotcheck is at 1.0. Within 1.x, the manifest format, the commands and flags,
+the exit codes and the layout of the report lines stay as they are, so a
+manifest you write today keeps working and so do your cron jobs and scripts.
+New commands, flags and status words may be added. [CHANGELOG.md](CHANGELOG.md)
+lists exactly what's covered and what changed in each release.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

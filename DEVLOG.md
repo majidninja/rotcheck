@@ -297,3 +297,23 @@ two-year goal.
 **Next:** a CHANGELOG.md and bump to 1.0.0 now that the format is written
 down. After that: an ignore mechanism (`.rotcheckignore`?) or a quick
 size/mtime-only check mode.
+
+## 2026-10-23
+
+- Released 1.0.0: version bumped in Cargo.toml, new CHANGELOG.md. The 1.0.0
+  entry says what the stable interface is (manifest format v1 per FORMAT.md,
+  commands and flags, exit codes, report line layout and status words) and
+  what isn't (summary wording, error messages, progress counter). It also
+  lists the features in 1.0.
+- README: a short "Stability" section that links to CHANGELOG.md.
+- Test: `changelog_top_entry_matches_version` checks the top CHANGELOG
+  heading against `CARGO_PKG_VERSION` and `rotcheck --version`, so a
+  version bump without a changelog entry fails (29 unit + 14 CLI).
+- New changes go under a `## Unreleased` heading at the top of the
+  CHANGELOG; the test skips that heading.
+
+**Next:** an ignore mechanism. Probably a `.rotcheckignore` file with one
+glob-ish pattern per line (keep it simple: exact paths and `*` within a
+path segment, no regex), used by `list`, `init`, `verify` and `update`.
+Has to be written into FORMAT.md/README too. Alternative: a quick
+size/mtime-only `verify --fast`.

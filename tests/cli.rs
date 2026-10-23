@@ -303,3 +303,23 @@ fn report_paths_start_at_column_13() {
     let paths: Vec<&str> = out.lines().map(|l| &l[12..]).collect();
     assert_eq!(paths, ["edit.txt", "gone.txt", "fresh.txt"]);
 }
+
+#[test]
+fn changelog_top_entry_matches_version() {
+    // Bumping the version in Cargo.toml without a CHANGELOG entry (or the
+    // other way round) fails here.
+    let changelog = include_str!("../CHANGELOG.md");
+    let top = changelog
+        .lines()
+        .filter_map(|l| l.strip_prefix("## "))
+        .find(|h| *h != "Unreleased")
+        .expect("CHANGELOG.md has no version heading");
+    let version = top.split(' ').next().unwrap();
+    assert_eq!(version, env!("CARGO_PKG_VERSION"));
+
+    let out = Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+        .arg("--version")
+        .output()
+        .unwrap();
+    assert_eq!(stdout(&out), format!("rotcheck {version}\n"));
+}
