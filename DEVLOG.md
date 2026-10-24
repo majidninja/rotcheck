@@ -317,3 +317,23 @@ glob-ish pattern per line (keep it simple: exact paths and `*` within a
 path segment, no regex), used by `list`, `init`, `verify` and `update`.
 Has to be written into FORMAT.md/README too. Alternative: a quick
 size/mtime-only `verify --fast`.
+
+## 2026-10-24
+
+- `.rotcheckignore`: new `src/ignore.rs`. One pattern per line, `#`
+  comments, `*` matches within a path segment (no other wildcards). No `/`
+  in the pattern = matches a name at any depth; with `/` = anchored to the
+  root; trailing `/` = folders only. Ignored folders aren't descended into.
+  Applied inside `walk::walk`, so `list`, `init`, `verify` and `update` all
+  follow it without other changes. The ignore file itself is recorded.
+- Decided: entries already in a manifest that become ignored show up as
+  `MISSING` in verify and are dropped by `update`. Simple and visible,
+  documented in the README.
+- Docs: README "Leaving files out", a paragraph in FORMAT.md "What a
+  manifest covers", `help` text, CHANGELOG "Unreleased" entry.
+- Tests: glob/pattern unit tests, a walk test, and a CLI test where edits
+  to ignored files leave `verify` clean (34 unit + 15 CLI).
+
+**Next:** maybe have `update` say how many entries it dropped because
+they're now ignored (instead of plain MISSING). Then either a quick
+`verify --fast` (size/mtime only) or release 1.1.0 with the ignore file.

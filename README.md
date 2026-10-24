@@ -168,6 +168,33 @@ rotcheck update --accept-corrupted ~/Pictures
 It's worth running `verify` and reading its output before `update`, because
 `update` accepts every `MODIFIED` and `MISSING` file without asking.
 
+### Leaving files out
+
+Some files change all the time and aren't worth checking: caches, thumbnails,
+editor temp files. List them in a file called `.rotcheckignore` at the top of
+the folder, one pattern per line:
+
+```
+# junk the OS and editors leave behind
+.DS_Store
+*.tmp
+# whole folders
+thumbnails/
+cache/*
+```
+
+- `*` matches anything except `/`. There are no other wildcards.
+- A pattern without `/` matches a file or folder name anywhere in the tree.
+- A pattern with `/` matches the full path from the top of the folder.
+- A trailing `/` means "folders only". Everything inside an ignored folder is
+  left out.
+- Lines starting with `#` and blank lines are skipped.
+
+`init`, `update`, `verify` and `list` all follow it. If you add a pattern for
+files that are already in the manifest, `verify` reports them as `MISSING`
+until you run `update`, which drops them. The `.rotcheckignore` file itself
+is checked like any other file.
+
 ### Exit codes
 
 Handy for cron jobs and scripts:

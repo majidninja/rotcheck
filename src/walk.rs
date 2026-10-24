@@ -9,6 +9,8 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+use crate::ignore::Ignore;
+
 /// Name of the manifest file rotcheck keeps at the root of a checked tree.
 pub const MANIFEST_NAME: &str = ".rotcheck.sha256";
 
@@ -17,15 +19,17 @@ pub const MANIFEST_NAME: &str = ".rotcheck.sha256";
 pub const MANIFEST_TMP_NAME: &str = ".rotcheck.sha256.tmp";
 
 /// Lists all regular files under `root`, skipping symlinks and the manifest
-/// file (and its temp file) at the top level.
+/// file (and its temp file) at the top level. Files and folders matched by
+/// the tree's `.rotcheckignore` are left out too.
 pub fn walk(root: &Path) -> io::Result<Vec<String>> {
+    let ignore = Ignore::load(root)?;
     let mut out = Vec::new();
-    walk_dir(root, "", &mut out)?;
+    walk_dir(root, "", &ignore, &mut out)?;
     out.sort();
     Ok(out)
 }
 
-fn walk_dir(dir: &Path, prefix: &str, out: &mut Vec<String>) -> io::Result<()> {
+fn walk_dir(dir: &Path, prefix: &str, ignore: &Ignore, out: &mut Vec<String>) -> io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let name = entry.file_name();
@@ -39,8 +43,11 @@ fn walk_dir(dir: &Path, prefix: &str, out: &mut Vec<String>) -> io::Result<()> {
         // `file_type` comes from the directory entry and does not follow
         // symlinks, which is exactly what we want.
         let ft = entry.file_type()?;
+        if ignore.is_ignored(&rel, ft.is_dir()) {
+            continue;
+        }
         if ft.is_dir() {
-            walk_dir(&entry.path(), &format!("{rel}/"), out)?;
+            walk_dir(&entry.path(), &format!("{rel}/"), ignore, out)?;
         } else if ft.is_file() {
             if prefix.is_empty() && (name == MANIFEST_NAME || name == MANIFEST_TMP_NAME) {
                 continue;
@@ -111,6 +118,26 @@ pub(crate) mod tests {
         assert_eq!(
             walk(&t.0).unwrap(),
             ["keep".to_string(), format!("sub/{MANIFEST_NAME}")]
+        );
+    }
+
+    #[test]
+    fn honours_rotcheckignore() {
+        let t = TempDir::new("ignore");
+        for rel in [
+            "keep.txt",
+            "x.tmp",
+            "sub/y.tmp",
+            "cache/a",
+            "cache/b/c",
+            "sub/cache",
+        ] {
+            touch(&t.0, rel);
+        }
+        fs::write(t.0.join(crate::ignore::IGNORE_NAME), "*.tmp\ncache/\n").unwrap();
+        assert_eq!(
+            walk(&t.0).unwrap(),
+            [crate::ignore::IGNORE_NAME, "keep.txt", "sub/cache"]
         );
     }
 

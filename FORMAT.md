@@ -94,6 +94,10 @@ sockets, FIFOs and devices, and the manifest itself (`.rotcheck.sha256`)
 plus its temporary file (`.rotcheck.sha256.tmp`) at the top level. File
 names that aren't valid UTF-8 are an error.
 
+Files and folders matched by a `.rotcheckignore` file at the top level are
+left out too (see the README for its pattern rules). This only decides which
+files get recorded; a manifest reads the same with or without one.
+
 ## Stability
 
 Version 1 won't change in a way that makes existing manifests read

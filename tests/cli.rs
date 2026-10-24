@@ -323,3 +323,24 @@ fn changelog_top_entry_matches_version() {
         .unwrap();
     assert_eq!(stdout(&out), format!("rotcheck {version}\n"));
 }
+
+#[test]
+fn rotcheckignore_leaves_files_out() {
+    let t = TempDir::new("ignore");
+    fs::create_dir_all(t.0.join("cache")).unwrap();
+    fs::write(t.0.join("keep.txt"), "k").unwrap();
+    fs::write(t.0.join("scratch.tmp"), "s").unwrap();
+    fs::write(t.0.join("cache/blob"), "b").unwrap();
+    fs::write(t.0.join(".rotcheckignore"), "*.tmp\ncache/\n").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    // Changes to ignored files don't show up in verify.
+    fs::write(t.0.join("scratch.tmp"), "changed").unwrap();
+    fs::write(t.0.join("cache/new"), "n").unwrap();
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(
+        stdout(&out),
+        "rotcheck: 2 ok, 0 corrupted, 0 modified, 0 missing, 0 new\n"
+    );
+}

@@ -1,3 +1,4 @@
+mod ignore;
 mod manifest;
 mod progress;
 mod sha256;
@@ -25,6 +26,9 @@ USAGE:
         --quiet                Print only the files that make it fail, no summary
     rotcheck help              Show this message
     rotcheck --version         Show version
+
+Files and folders matched by DIR/.rotcheckignore (one pattern per line,
+`*` within a name, trailing `/` for folders) are left out.
 ";
 
 fn main() -> ExitCode {

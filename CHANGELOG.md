@@ -4,6 +4,13 @@ All notable changes to rotcheck. Versions follow
 [Semantic Versioning](https://semver.org/): from 1.0.0 on, anything listed
 under "Stable interface" below only changes in a new major version.
 
+## Unreleased
+
+- `.rotcheckignore`: a file at the top of the checked folder listing files
+  and folders to leave out, one pattern per line (`*` within a name, a
+  trailing `/` for folders only). Used by `init`, `update`, `verify` and
+  `list`.
+
 ## 1.0.0 - 2026-10-23
 
 First stable release. Nothing changed in behaviour since the last 0.1.0
