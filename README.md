@@ -192,7 +192,9 @@ cache/*
 
 `init`, `update`, `verify` and `list` all follow it. If you add a pattern for
 files that are already in the manifest, `verify` reports them as `MISSING`
-until you run `update`, which drops them. The `.rotcheckignore` file itself
+until you run `update`, which drops them. Both commands tell you how many of
+the missing files are covered by `.rotcheckignore`, so you can tell them
+apart from files that really disappeared. The `.rotcheckignore` file itself
 is checked like any other file.
 
 ### Exit codes

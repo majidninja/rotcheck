@@ -10,6 +10,9 @@ under "Stable interface" below only changes in a new major version.
   and folders to leave out, one pattern per line (`*` within a name, a
   trailing `/` for folders only). Used by `init`, `update`, `verify` and
   `list`.
+- `verify` and `update` say in their summary how many missing files are
+  only missing because `.rotcheckignore` now covers them. Report lines are
+  unchanged: those files still show as `MISSING`.
 
 ## 1.0.0 - 2026-10-23
 

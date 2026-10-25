@@ -185,6 +185,8 @@ fn cmd_verify(args: &[String]) -> ExitCode {
     let Some(entries) = load_manifest(dir, &manifest_path) else {
         return ExitCode::from(2);
     };
+    let ignore = ignore::Ignore::load(root).unwrap_or_default();
+    let mut now_ignored = 0;
     let progress = progress::Progress::new(!quiet, None);
     let result = verify::verify(
         root,
@@ -192,6 +194,9 @@ fn cmd_verify(args: &[String]) -> ExitCode {
         |n| progress.set_total(n),
         |path, status| {
             progress.tick();
+            if status == verify::Status::Missing && ignore.covers(path) {
+                now_ignored += 1;
+            }
             let show = match status {
                 verify::Status::Ok => false,
                 // With --quiet only lines that affect the exit code are shown,
@@ -224,6 +229,13 @@ fn cmd_verify(args: &[String]) -> ExitCode {
                 line.push_str(&format!(", {} unreadable", s.unreadable));
             }
             println!("{line}");
+            if now_ignored > 0 {
+                println!(
+                    "rotcheck: {now_ignored} of the missing files match {}; \
+                     run `rotcheck update {dir}` to drop them",
+                    ignore::IGNORE_NAME
+                );
+            }
             if failed {
                 ExitCode::FAILURE
             } else {
@@ -269,6 +281,8 @@ fn cmd_update(args: &[String]) -> ExitCode {
     let Some(old) = load_manifest(dir, &manifest_path) else {
         return ExitCode::from(2);
     };
+    let ignore = ignore::Ignore::load(root).unwrap_or_default();
+    let mut now_ignored = 0;
     let progress = progress::Progress::new(!quiet, None);
     let result = update::update(
         root,
@@ -277,6 +291,9 @@ fn cmd_update(args: &[String]) -> ExitCode {
         |n| progress.set_total(n),
         |path, status| {
             progress.tick();
+            if status == verify::Status::Missing && ignore.covers(path) {
+                now_ignored += 1;
+            }
             let show = match status {
                 verify::Status::Ok => false,
                 // Like `verify --quiet`: only lines that affect the exit code.
@@ -306,6 +323,9 @@ fn cmd_update(args: &[String]) -> ExitCode {
         "rotcheck: manifest updated: {} added, {} updated, {} removed, {} unchanged",
         s.new, s.modified, s.missing, s.ok
     );
+    if now_ignored > 0 {
+        line.push_str(&format!(" ({now_ignored} of the removed are now ignored)"));
+    }
     if s.corrupted > 0 {
         let what = if accept_corrupted { "accepted" } else { "kept" };
         line.push_str(&format!(", {} corrupted ({what})", s.corrupted));

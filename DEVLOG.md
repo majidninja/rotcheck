@@ -337,3 +337,22 @@ size/mtime-only `verify --fast`.
 **Next:** maybe have `update` say how many entries it dropped because
 they're now ignored (instead of plain MISSING). Then either a quick
 `verify --fast` (size/mtime only) or release 1.1.0 with the ignore file.
+
+## 2026-10-25
+
+- `verify` and `update` now explain entries that are missing only because
+  `.rotcheckignore` covers them. `verify` adds a line after the summary
+  ("N of the missing files match .rotcheckignore; run `rotcheck update DIR`
+  to drop them"). `update` adds "(N of the removed are now ignored)" to its
+  summary. Report lines and status words stay the same (they're part of the
+  stable interface); only summary wording changed, and that isn't promised
+  to stay fixed.
+- New `Ignore::covers(rel)`: true if the file or any folder above it is
+  ignored, matching what the walk skips.
+- Tests: `covers_files_inside_ignored_folders` and the CLI test
+  `newly_ignored_entries_are_explained` (35 unit + 16 CLI). README and
+  CHANGELOG "Unreleased" updated.
+
+**Next:** release 1.1.0 (move "Unreleased" to a dated 1.1.0 entry, bump
+Cargo.toml). Then maybe a quick `verify --fast` that only compares size
+and mtime, for a cheap daily check between full runs.

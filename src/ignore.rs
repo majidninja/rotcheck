@@ -82,6 +82,23 @@ impl Ignore {
             }
         })
     }
+
+    /// Whether the file at `rel` is left out of a walk: either it is ignored
+    /// itself or one of the folders above it is.
+    pub fn covers(&self, rel: &str) -> bool {
+        if self.is_ignored(rel, false) {
+            return true;
+        }
+        let mut end = 0;
+        while let Some(i) = rel[end..].find('/') {
+            end += i;
+            if self.is_ignored(&rel[..end], true) {
+                return true;
+            }
+            end += 1;
+        }
+        false
+    }
 }
 
 /// Matches `text` against `pattern`, where `*` matches any run of characters.
@@ -152,5 +169,17 @@ mod tests {
         assert!(ig.is_ignored("build", true));
         assert!(ig.is_ignored("sub/build", true));
         assert!(!ig.is_ignored("build", false));
+    }
+
+    #[test]
+    fn covers_files_inside_ignored_folders() {
+        let ig = Ignore::parse("build/\n*.tmp\nphotos/raw\n");
+        assert!(ig.covers("build/out.bin"));
+        assert!(ig.covers("a/build/deep/x"));
+        assert!(ig.covers("a/x.tmp"));
+        assert!(ig.covers("photos/raw/1.cr2"));
+        assert!(!ig.covers("build"));
+        assert!(!ig.covers("photos/edited/1.jpg"));
+        assert!(!ig.covers("a/b/c.txt"));
     }
 }

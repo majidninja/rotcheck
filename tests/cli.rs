@@ -344,3 +344,36 @@ fn rotcheckignore_leaves_files_out() {
         "rotcheck: 2 ok, 0 corrupted, 0 modified, 0 missing, 0 new\n"
     );
 }
+
+#[test]
+fn newly_ignored_entries_are_explained() {
+    let t = TempDir::new("ignore-later");
+    fs::create_dir_all(t.0.join("cache")).unwrap();
+    fs::write(t.0.join("keep.txt"), "k").unwrap();
+    fs::write(t.0.join("cache/blob"), "b").unwrap();
+    fs::write(t.0.join("gone.txt"), "g").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    // Ignore the cache after the fact, and delete a file for real.
+    fs::write(t.0.join(".rotcheckignore"), "cache/\n").unwrap();
+    fs::remove_file(t.0.join("gone.txt")).unwrap();
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    let text = stdout(&out);
+    assert!(text.contains("MISSING     cache/blob\n"), "{text}");
+    let dir = t.0.display();
+    assert!(
+        text.ends_with(&format!(
+            "1 of the missing files match .rotcheckignore; run `rotcheck update {dir}` to drop them\n"
+        )),
+        "{text}"
+    );
+
+    let out = rotcheck(&["update"], &t.0);
+    assert!(out.status.success());
+    let text = stdout(&out);
+    assert!(
+        text.contains("2 removed, 1 unchanged (1 of the removed are now ignored)"),
+        "{text}"
+    );
+}
