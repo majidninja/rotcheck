@@ -356,3 +356,19 @@ they're now ignored (instead of plain MISSING). Then either a quick
 **Next:** release 1.1.0 (move "Unreleased" to a dated 1.1.0 entry, bump
 Cargo.toml). Then maybe a quick `verify --fast` that only compares size
 and mtime, for a cheap daily check between full runs.
+
+## 2026-10-26
+
+- Released 1.1.0: Cargo.toml bumped, the "Unreleased" changelog notes moved
+  into a dated 1.1.0 entry (under "Added"), and an empty "Unreleased"
+  heading left on top for the next changes.
+- Made the `.rotcheckignore` pattern syntax part of the stable interface
+  (stated in the 1.1.0 entry and the README "Stability" section): later 1.x
+  may add syntax, but existing ignore files keep their meaning.
+- The changelog/version test already covers the bump (35 unit + 16 CLI).
+
+**Next:** `verify --fast`: compare only size and mtime against the
+manifest (no hashing), for a cheap check between full runs. It can't tell
+corruption from edits, so it should report differing files as `MODIFIED`
+and say clearly in the summary that contents weren't checked. Needs README,
+help text and a CHANGELOG "Unreleased" entry.

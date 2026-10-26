@@ -6,6 +6,10 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+## 1.1.0 - 2026-10-26
+
+### Added
+
 - `.rotcheckignore`: a file at the top of the checked folder listing files
   and folders to leave out, one pattern per line (`*` within a name, a
   trailing `/` for folders only). Used by `init`, `update`, `verify` and
@@ -13,6 +17,14 @@ under "Stable interface" below only changes in a new major version.
 - `verify` and `update` say in their summary how many missing files are
   only missing because `.rotcheckignore` now covers them. Report lines are
   unchanged: those files still show as `MISSING`.
+
+### Stable interface
+
+- The `.rotcheckignore` pattern syntax is now part of the stable interface:
+  `#` comments, `*` within a name, a pattern without `/` matches a name at
+  any depth, one with a `/` inside is anchored to the top folder, a
+  trailing `/` means folders only. Later 1.x releases may add syntax, but a
+  file that works today keeps meaning the same thing.
 
 ## 1.0.0 - 2026-10-23
 
