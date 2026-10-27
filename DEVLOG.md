@@ -372,3 +372,25 @@ manifest (no hashing), for a cheap check between full runs. It can't tell
 corruption from edits, so it should report differing files as `MODIFIED`
 and say clearly in the summary that contents weren't checked. Needs README,
 help text and a CHANGELOG "Unreleased" entry.
+
+## 2026-10-27
+
+- `verify --fast`: compares only size and mtime against the manifest, no
+  hashing. Differing files are `MODIFIED` (never `CORRUPTED`), and the
+  summary gets an extra line saying contents weren't checked. Entries with
+  no metadata (size 0 + mtime 0, i.e. plain `sha256sum` lines) are hashed
+  anyway, since there's nothing else to compare.
+- `verify.rs`: the per-file check is now a parameter of a private
+  `scan_with`; `scan` uses the hashing `full_check`, the new `verify_fast`
+  uses `quick_check`. `update` is unchanged (always hashes).
+- Note: picking `verify::verify` vs `verify_fast` as a fn value in main
+  failed on closure lifetime inference; passing `&mut report` to either
+  call works.
+- Docs: README "A quick check" section, help text, CHANGELOG "Unreleased".
+- Tests: `fast_verify_compares_only_size_and_mtime` (unit) and
+  `fast_verify_skips_contents` (CLI) — 36 unit + 17 CLI.
+
+**Next:** maybe `--fast` should not flag a changed mtime alone when size
+matches? (No: without contents we can't know; keep it.) Ideas: a
+`rotcheck status`-style "last full verify" timestamp in the manifest
+(would need a FORMAT.md comment field), or release 1.2.0 with `--fast`.

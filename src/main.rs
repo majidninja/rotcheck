@@ -21,6 +21,7 @@ USAGE:
     rotcheck verify [DIR]      Check DIR against its manifest
         --strict               Also fail (exit 1) when there are new files
         --quiet                Print only the files that make it fail, no summary
+        --fast                 Compare only size and mtime; don't read contents
     rotcheck update [DIR]      Accept added, edited and removed files into the manifest
         --accept-corrupted     Also re-record files that look corrupted
         --quiet                Print only the files that make it fail, no summary
@@ -174,7 +175,9 @@ fn split_flags<const N: usize>(
 }
 
 fn cmd_verify(args: &[String]) -> ExitCode {
-    let Some(([strict, quiet], rest)) = split_flags("verify", args, ["--strict", "--quiet"]) else {
+    let Some(([strict, quiet, fast], rest)) =
+        split_flags("verify", args, ["--strict", "--quiet", "--fast"])
+    else {
         return ExitCode::from(2);
     };
     let Some(dir) = dir_arg("verify", &rest) else {
@@ -188,28 +191,29 @@ fn cmd_verify(args: &[String]) -> ExitCode {
     let ignore = ignore::Ignore::load(root).unwrap_or_default();
     let mut now_ignored = 0;
     let progress = progress::Progress::new(!quiet, None);
-    let result = verify::verify(
-        root,
-        &entries,
-        |n| progress.set_total(n),
-        |path, status| {
-            progress.tick();
-            if status == verify::Status::Missing && ignore.covers(path) {
-                now_ignored += 1;
-            }
-            let show = match status {
-                verify::Status::Ok => false,
-                // With --quiet only lines that affect the exit code are shown,
-                // so a silent run is a clean run.
-                verify::Status::New => strict || !quiet,
-                _ => true,
-            };
-            if show {
-                progress.clear();
-                println!("{status:<10}  {}", manifest::display_path(path));
-            }
-        },
-    );
+    let mut report = |path: &str, status| {
+        progress.tick();
+        if status == verify::Status::Missing && ignore.covers(path) {
+            now_ignored += 1;
+        }
+        let show = match status {
+            verify::Status::Ok => false,
+            // With --quiet only lines that affect the exit code are shown,
+            // so a silent run is a clean run.
+            verify::Status::New => strict || !quiet,
+            _ => true,
+        };
+        if show {
+            progress.clear();
+            println!("{status:<10}  {}", manifest::display_path(path));
+        }
+    };
+    let total = |n| progress.set_total(n);
+    let result = if fast {
+        verify::verify_fast(root, &entries, total, &mut report)
+    } else {
+        verify::verify(root, &entries, total, &mut report)
+    };
     progress.clear();
     match result {
         Ok(s) => {
@@ -229,6 +233,12 @@ fn cmd_verify(args: &[String]) -> ExitCode {
                 line.push_str(&format!(", {} unreadable", s.unreadable));
             }
             println!("{line}");
+            if fast {
+                println!(
+                    "rotcheck: fast check: only sizes and times were compared, \
+                     not contents; run a full `rotcheck verify {dir}` to find corruption"
+                );
+            }
             if now_ignored > 0 {
                 println!(
                     "rotcheck: {now_ignored} of the missing files match {}; \

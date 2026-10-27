@@ -197,6 +197,26 @@ the missing files are covered by `.rotcheckignore`, so you can tell them
 apart from files that really disappeared. The `.rotcheckignore` file itself
 is checked like any other file.
 
+### A quick check: `verify --fast`
+
+A full `verify` reads every byte, which takes a while on a big photo
+archive or a slow USB disk. `verify --fast` only compares each file's size
+and modification time with the manifest, so it finishes in seconds:
+
+```text
+$ rotcheck verify --fast ~/Pictures
+MODIFIED    2024/notes.txt
+rotcheck: 4211 ok, 0 corrupted, 1 modified, 0 missing, 0 new
+rotcheck: fast check: only sizes and times were compared, not contents; ...
+```
+
+It finds missing, new and edited files, but it **can't find bit rot**:
+a corrupted file keeps its size and timestamp, so it looks fine. Any file
+whose size or time changed is reported as `MODIFIED`, even if only its
+timestamp moved. Use it for a cheap daily look, and keep a full `verify`
+every week or month. (Entries from a plain `sha256sum` list have no sizes
+or times, so `--fast` reads those files in full.)
+
 ### Exit codes
 
 Handy for cron jobs and scripts:

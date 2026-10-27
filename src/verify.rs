@@ -99,6 +99,42 @@ pub fn verify<T: FnOnce(usize), F: FnMut(&str, Status)>(
     scan(root, entries, total, |path, status, _| report(path, status))
 }
 
+/// Like [`verify`], but only compares size and mtime with the manifest and
+/// reads no file contents. A file whose size or mtime differs is reported as
+/// modified; nothing can be reported as corrupted, since that needs the
+/// contents. Entries without metadata (size 0 and mtime 0, as from a plain
+/// `sha256sum` list) are hashed anyway, because there is nothing to compare.
+pub fn verify_fast<T: FnOnce(usize), F: FnMut(&str, Status)>(
+    root: &Path,
+    entries: &[Entry],
+    total: T,
+    mut report: F,
+) -> io::Result<Summary> {
+    scan_with(root, entries, total, quick_check, |path, status, _| {
+        report(path, status)
+    })
+}
+
+/// The [`verify_fast`] check for one listed file that is on disk.
+fn quick_check(root: &Path, entry: &Entry) -> (Status, Option<Entry>) {
+    if entry.size == 0 && entry.mtime == 0 {
+        return full_check(root, entry);
+    }
+    match manifest::file_meta(&root.join(&entry.path)) {
+        Ok((size, mtime)) if size == entry.size && mtime == entry.mtime => (Status::Ok, None),
+        Ok(_) => (Status::Modified, None),
+        Err(_) => (Status::Unreadable, None),
+    }
+}
+
+/// The normal check for one listed file that is on disk: hash and classify.
+fn full_check(root: &Path, entry: &Entry) -> (Status, Option<Entry>) {
+    match current_entry(root, &entry.path) {
+        Ok(now) => (classify(entry, now.size, now.mtime, &now.hash), Some(now)),
+        Err(_) => (Status::Unreadable, None),
+    }
+}
+
 /// Like [`verify`], but also hands `report` what is on disk right now for
 /// every file that was hashed (ok, modified or corrupted), so `update` does
 /// not have to read those files a second time.
@@ -106,8 +142,25 @@ pub fn scan<T: FnOnce(usize), F: FnMut(&str, Status, Option<Entry>)>(
     root: &Path,
     entries: &[Entry],
     total: T,
-    mut report: F,
+    report: F,
 ) -> io::Result<Summary> {
+    scan_with(root, entries, total, full_check, report)
+}
+
+/// The walk shared by [`scan`] and [`verify_fast`]: `check` decides the
+/// status of each listed file that is on disk.
+fn scan_with<T, C, F>(
+    root: &Path,
+    entries: &[Entry],
+    total: T,
+    check: C,
+    mut report: F,
+) -> io::Result<Summary>
+where
+    T: FnOnce(usize),
+    C: Fn(&Path, &Entry) -> (Status, Option<Entry>),
+    F: FnMut(&str, Status, Option<Entry>),
+{
     let on_disk: BTreeSet<String> = walk::walk(root)?.into_iter().collect();
     let listed: BTreeSet<&str> = entries.iter().map(|e| e.path.as_str()).collect();
     let new_count = on_disk
@@ -122,10 +175,7 @@ pub fn scan<T: FnOnce(usize), F: FnMut(&str, Status, Option<Entry>)>(
             continue; // listed twice; the first line wins
         }
         let (status, current) = if on_disk.contains(&entry.path) {
-            match current_entry(root, &entry.path) {
-                Ok(now) => (classify(entry, now.size, now.mtime, &now.hash), Some(now)),
-                Err(_) => (Status::Unreadable, None),
-            }
+            check(root, entry)
         } else {
             (Status::Missing, None)
         };
@@ -235,6 +285,44 @@ mod tests {
             }
         );
         assert!(summary.has_problems());
+    }
+
+    #[test]
+    fn fast_verify_compares_only_size_and_mtime() {
+        let tmp = TempDir::new("verify-fast");
+        let root = &tmp.0;
+        for name in ["same", "grown", "rotten", "nometa"] {
+            fs::write(root.join(name), name).unwrap();
+        }
+        let mut entries = crate::build_entries(root).unwrap();
+        fs::write(root.join("grown"), "grown bigger").unwrap();
+        // Different bytes, but size and mtime as recorded: fast mode can't
+        // see this.
+        let rotten = root.join("rotten");
+        fs::write(&rotten, "rottem").unwrap();
+        let (_, mtime) = manifest::file_meta(&rotten).unwrap();
+        for e in &mut entries {
+            match e.path.as_str() {
+                "rotten" => e.mtime = mtime,
+                // No metadata, like a sha256sum line: gets hashed.
+                "nometa" => (e.size, e.mtime, e.hash) = (0, 0, "00".to_string()),
+                _ => {}
+            }
+        }
+        let mut seen = Vec::new();
+        let summary =
+            verify_fast(root, &entries, |_| {}, |p, s| seen.push((p.to_string(), s))).unwrap();
+        seen.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(
+            seen,
+            [
+                ("grown".to_string(), Status::Modified),
+                ("nometa".to_string(), Status::Modified),
+                ("rotten".to_string(), Status::Ok),
+                ("same".to_string(), Status::Ok),
+            ]
+        );
+        assert_eq!(summary.corrupted, 0);
     }
 
     #[test]

@@ -88,6 +88,32 @@ fn verify_reports_each_kind_of_change() {
 }
 
 #[test]
+fn fast_verify_skips_contents() {
+    let t = TempDir::new("fast");
+    fs::write(t.0.join("notes.txt"), "notes").unwrap();
+    fs::write(t.0.join("scan.png"), "scan").unwrap();
+    set_mtime(&t.0.join("scan.png"), 1_700_000_000);
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    fs::write(t.0.join("notes.txt"), "notes, and more").unwrap();
+    fs::write(t.0.join("scan.png"), "scaN").unwrap();
+    set_mtime(&t.0.join("scan.png"), 1_700_000_000);
+
+    // The rotten scan.png passes: only a full verify reads contents.
+    let out = rotcheck(&["verify", "--fast"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    let text = stdout(&out);
+    assert!(text.starts_with(
+        "MODIFIED    notes.txt\n\
+         rotcheck: 1 ok, 0 corrupted, 1 modified, 0 missing, 0 new\n\
+         rotcheck: fast check: "
+    ));
+
+    let out = rotcheck(&["verify", "--fast", "--quiet"], &t.0);
+    assert_eq!(stdout(&out), "MODIFIED    notes.txt\n");
+}
+
+#[test]
 fn new_files_alone_are_not_a_failure() {
     let t = TempDir::new("new-only");
     fs::write(t.0.join("a.txt"), "a").unwrap();

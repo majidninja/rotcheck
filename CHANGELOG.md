@@ -6,6 +6,14 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+### Added
+
+- `verify --fast`: compares only each file's size and mtime with the
+  manifest, without reading contents. Much quicker, but it can't detect
+  corruption; changed files are reported as `MODIFIED` and the summary says
+  that contents weren't checked. Entries without size/mtime (plain
+  `sha256sum` lists) are still hashed.
+
 ## 1.1.0 - 2026-10-26
 
 ### Added
