@@ -410,3 +410,20 @@ FORMAT.md-compatible comment line in the manifest, so think carefully
 first), or a `--fast` hint in `verify`'s output when it's been a long time
 since a full check. Simpler alternative: an `--only PATH` filter for
 `verify` to check one subfolder.
+
+## 2026-10-28 (interactive, packaging)
+
+- Releases are now packaged: `.github/workflows/release.yml` runs on a `v*`
+  tag, builds static musl binaries for x86_64 and aarch64, makes `.tar.gz`,
+  `.deb` (cargo-deb) and `.rpm` (cargo-generate-rpm), and publishes a GitHub
+  release with the version's CHANGELOG section as notes plus SHA256SUMS.
+  It fails if the tag doesn't match Cargo.toml's version.
+- `man/rotcheck.1` added; the packages install it. Test
+  `man_page_matches_version_and_flags` checks the `.TH` version and that
+  every `--flag` from `rotcheck help` appears in it.
+- Package metadata in Cargo.toml (`[package.metadata.deb]` and
+  `[package.metadata.generate-rpm]`). README Install now leads with the packages.
+- run.sh tags and pushes `vX.Y.Z` automatically after the daily push, when
+  Cargo.toml's version matches the newest dated CHANGELOG entry and tests
+  pass. So bumping the version publishes a release: do it at most about
+  every two weeks.

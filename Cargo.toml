@@ -11,6 +11,8 @@ homepage = "https://github.com/majidninja/rotcheck"
 readme = "README.md"
 keywords = ["checksum", "bitrot", "sha256", "integrity", "backup"]
 categories = ["command-line-utilities", "filesystem"]
+# What goes into the crates.io package (tests/cli.rs reads CHANGELOG.md and the man page).
+include = ["/src", "/tests", "/man", "README.md", "FORMAT.md", "CHANGELOG.md", "LICENSE"]
 
 [dependencies]
 
