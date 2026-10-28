@@ -1,0 +1,186 @@
+.TH ROTCHECK 1 "2026-10-28" "rotcheck 1.2.0" "User Commands"
+.SH NAME
+rotcheck \- detect missing, changed and silently corrupted files
+.SH SYNOPSIS
+.B rotcheck hash
+.IR FILE ...
+.br
+.B rotcheck list
+.RI [ DIR ]
+.br
+.B rotcheck init
+.RI [ DIR ]
+.br
+.B rotcheck verify
+.RB [ \-\-strict ]
+.RB [ \-\-quiet ]
+.RB [ \-\-fast ]
+.RI [ DIR ]
+.br
+.B rotcheck update
+.RB [ \-\-accept\-corrupted ]
+.RB [ \-\-quiet ]
+.RI [ DIR ]
+.br
+.B rotcheck help
+.br
+.B rotcheck \-\-version
+.SH DESCRIPTION
+.B rotcheck
+records a SHA\-256 checksum, size and modification time for every file in a
+folder, and later tells you which files went missing, were edited, or changed
+content without their size or timestamp changing (bit rot).
+.PP
+The record is a plain text file,
+.IR DIR /.rotcheck.sha256 ,
+in the format of
+.BR sha256sum (1),
+so
+.B sha256sum \-c
+can check the folder too. Sizes and times are kept on
+.B #
+comment lines that
+.B sha256sum
+skips. The format is described in
+.I /usr/share/doc/rotcheck/FORMAT.md.
+.PP
+.I DIR
+defaults to the current directory. Symbolic links are skipped, not followed.
+rotcheck works offline and never changes your files.
+.SH COMMANDS
+.TP
+.BI hash " FILE" ...
+Print SHA\-256 checksums in
+.B sha256sum
+format.
+.TP
+.BR list " [\fIDIR\fR]"
+List the files a manifest of
+.I DIR
+would cover: relative paths with
+.BR / ,
+sorted.
+.TP
+.BR init " [\fIDIR\fR]"
+Record every file in
+.IR DIR .
+Refuses to overwrite an existing manifest.
+.TP
+.BR verify " [\fIDIR\fR]"
+Hash every file again and compare with the manifest. Files that are fine
+are not listed. Changes nothing.
+.TP
+.BR update " [\fIDIR\fR]"
+Like
+.BR verify ,
+then rewrite the manifest: add new files, drop missing ones and record the
+new checksum of edited ones. Files that look corrupted keep their old
+checksum.
+.SH OPTIONS
+.TP
+.B \-\-strict
+.RB ( verify )
+Also exit with status 1 when there are new files.
+.TP
+.B \-\-quiet
+.RB ( verify ", " update )
+Print only the files that make the command fail, and no summary. No output
+means all is well, which suits
+.BR cron (8).
+.TP
+.B \-\-fast
+.RB ( verify )
+Compare only size and modification time, without reading contents.
+Differences are reported as
+.BR MODIFIED .
+This cannot detect bit rot. Entries without a recorded size and time are
+hashed anyway.
+.TP
+.B \-\-accept\-corrupted
+.RB ( update )
+Also re\-record files that look corrupted.
+.SH OUTPUT
+.B verify
+and
+.B update
+print one line per file: a status word, spaces up to column 13, then the
+path. Names containing a backslash, newline or carriage return are escaped as
+.B sha256sum
+does. The summary line and errors start with
+.B rotcheck:
+and errors go to standard error.
+.TP 12
+.B CORRUPTED
+Content changed but size and time did not. Likely bit rot; restore the file
+from a backup.
+.TP
+.B MODIFIED
+Content changed along with size or time. Probably an edit.
+.TP
+.B MISSING
+In the manifest but no longer in the folder.
+.TP
+.B NEW
+In the folder but not in the manifest.
+.TP
+.B UNREADABLE
+Present but could not be read.
+.SH FILES
+.TP
+.IR DIR /.rotcheck.sha256
+The manifest.
+.TP
+.IR DIR /.rotcheckignore
+Files and folders to leave out, one pattern per line.
+.B *
+matches anything except
+.BR / .
+A pattern without
+.B /
+matches a name anywhere; one with
+.B /
+matches the full path from
+.IR DIR .
+A trailing
+.B /
+matches folders only. Lines starting with
+.B #
+and blank lines are skipped.
+.SH EXIT STATUS
+.TP
+.B 0
+Everything recorded is intact (new files are ignored unless
+.BR \-\-strict ).
+For
+.BR update ,
+the manifest now matches the folder.
+.TP
+.B 1
+Something is corrupted, modified, missing or unreadable. For
+.BR update ,
+a corrupted or unreadable file was left as it was.
+.TP
+.B 2
+The check could not be done: bad arguments, no manifest, unreadable folder.
+.SH EXAMPLES
+Record a folder, then check it every Sunday from
+.BR crontab (5):
+.PP
+.nf
+.RS
+rotcheck init ~/Pictures
+0 3 * * 0  rotcheck verify \-\-quiet ~/Pictures
+.RE
+.fi
+.PP
+List only the corrupted files:
+.PP
+.nf
+.RS
+rotcheck verify \-\-quiet ~/Pictures | grep \(aq^CORRUPTED\(aq | cut \-c13\-
+.RE
+.fi
+.SH SEE ALSO
+.BR sha256sum (1)
+.PP
+https://github.com/majidninja/rotcheck

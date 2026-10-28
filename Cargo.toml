@@ -2,8 +2,15 @@
 name = "rotcheck"
 version = "1.2.0"
 edition = "2024"
+rust-version = "1.85"
 description = "Detect missing, changed and silently corrupted files with plain sha256sum-compatible manifests"
 license = "MIT"
+authors = ["majidninja <networkplus3@gmail.com>"]
+repository = "https://github.com/majidninja/rotcheck"
+homepage = "https://github.com/majidninja/rotcheck"
+readme = "README.md"
+keywords = ["checksum", "bitrot", "sha256", "integrity", "backup"]
+categories = ["command-line-utilities", "filesystem"]
 
 [dependencies]
 
@@ -12,3 +19,34 @@ license = "MIT"
 lto = true
 codegen-units = 1
 strip = true
+
+# `cargo deb --target x86_64-unknown-linux-musl` (see .github/workflows/release.yml).
+# The binary is static, so the package depends on nothing.
+[package.metadata.deb]
+section = "utils"
+priority = "optional"
+depends = ""
+license-file = ["LICENSE", "2"]
+extended-description = """\
+rotcheck records a SHA-256 checksum for every file in a folder, in a plain \
+text manifest that sha256sum can also read. Later runs report files that \
+went missing, were edited, or changed content without their size or \
+timestamp changing (bit rot). Works offline and needs nothing at run time."""
+assets = [
+    ["target/release/rotcheck", "usr/bin/", "755"],
+    ["man/rotcheck.1", "usr/share/man/man1/", "644"],
+    ["README.md", "usr/share/doc/rotcheck/", "644"],
+    ["FORMAT.md", "usr/share/doc/rotcheck/", "644"],
+    ["CHANGELOG.md", "usr/share/doc/rotcheck/", "644"],
+]
+
+# `cargo generate-rpm --target x86_64-unknown-linux-musl`, after a release build.
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/rotcheck", dest = "/usr/bin/rotcheck", mode = "755" },
+    { source = "man/rotcheck.1", dest = "/usr/share/man/man1/rotcheck.1", mode = "644", doc = true },
+    { source = "README.md", dest = "/usr/share/doc/rotcheck/README.md", mode = "644", doc = true },
+    { source = "FORMAT.md", dest = "/usr/share/doc/rotcheck/FORMAT.md", mode = "644", doc = true },
+    { source = "CHANGELOG.md", dest = "/usr/share/doc/rotcheck/CHANGELOG.md", mode = "644", doc = true },
+    { source = "LICENSE", dest = "/usr/share/licenses/rotcheck/LICENSE", mode = "644" },
+]

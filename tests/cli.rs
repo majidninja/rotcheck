@@ -351,6 +351,31 @@ fn changelog_top_entry_matches_version() {
 }
 
 #[test]
+fn man_page_matches_version_and_flags() {
+    // The man page ships in the .deb/.rpm, so a version bump or a new flag
+    // has to reach it too.
+    let man = include_str!("../man/rotcheck.1");
+    let th = man.lines().find(|l| l.starts_with(".TH ")).unwrap();
+    let version = env!("CARGO_PKG_VERSION");
+    assert!(
+        th.contains(&format!("\"rotcheck {version}\"")),
+        "man/rotcheck.1 .TH line doesn't say rotcheck {version}: {th}"
+    );
+
+    let help = Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+        .arg("help")
+        .output()
+        .unwrap();
+    for flag in stdout(&help)
+        .split_whitespace()
+        .filter(|w| w.starts_with("--"))
+    {
+        let roff = flag.replace('-', "\\-");
+        assert!(man.contains(&roff), "man/rotcheck.1 doesn't mention {flag}");
+    }
+}
+
+#[test]
 fn rotcheckignore_leaves_files_out() {
     let t = TempDir::new("ignore");
     fs::create_dir_all(t.0.join("cache")).unwrap();

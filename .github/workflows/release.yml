@@ -1,0 +1,92 @@
+# Pushing a tag like v1.2.0 builds static Linux binaries, .deb and .rpm
+# packages for x86_64 and aarch64, and publishes them as a GitHub release
+# with that version's CHANGELOG entry as the notes.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      TARGET: ${{ matrix.arch }}-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches Cargo.toml
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          test "v$version" = "$GITHUB_REF_NAME" || {
+            echo "tag $GITHUB_REF_NAME doesn't match Cargo.toml version $version"; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q musl-tools
+          rustup update stable && rustup default stable
+          rustup target add "$TARGET"
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb,cargo-generate-rpm
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Build
+        run: cargo build --release --locked --target "$TARGET"
+
+      - name: Package
+        run: |
+          name="rotcheck-$VERSION-${{ matrix.arch }}-linux"
+          mkdir -p "dist/$name"
+          cargo deb --no-build --target "$TARGET" --output dist/
+          cargo generate-rpm --target "$TARGET" --output dist/
+          cp "target/$TARGET/release/rotcheck" README.md FORMAT.md CHANGELOG.md LICENSE man/rotcheck.1 "dist/$name/"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          rm -r "dist/$name"
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          # The notes are this version's CHANGELOG section, without its heading.
+          awk -v v="$version" '
+            /^## / { if (found) exit; if (index($0, "## " v " ") == 1) { found = 1; next } }
+            found' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "no CHANGELOG entry for $version"; exit 1; }
+          (cd dist && sha256sum * > SHA256SUMS)
+          gh release create "$GITHUB_REF_NAME" dist/* --title "rotcheck $version" --notes-file notes.md

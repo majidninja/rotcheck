@@ -16,11 +16,34 @@ what's different.
   `sha256sum`, so you can still check your files with standard tools if
   rotcheck ever disappears.
 
-> **Status:** early development, but the core loop works: `init` records a
-> folder, `verify` checks it and `update` accepts your intentional changes.
-> What's left is on the roadmap in [DEVLOG.md](DEVLOG.md).
+> **Status:** stable since 1.0. `init` records a folder, `verify` checks it
+> and `update` accepts your intentional changes. See [Stability](#stability)
+> for what stays fixed, and [DEVLOG.md](DEVLOG.md) for what might come next.
 
 ## Install
+
+Each [release](https://github.com/majidninja/rotcheck/releases/latest) has
+packages for x86_64 and aarch64 (ARM64) Linux. The binary inside is
+statically linked, so they work on any distribution and depend on nothing.
+
+On Debian, Ubuntu and friends, download the `.deb` and install it:
+
+```sh
+sudo apt install ./rotcheck_*_amd64.deb      # or _arm64.deb
+```
+
+On Fedora, RHEL, openSUSE and friends, use the `.rpm`:
+
+```sh
+sudo dnf install ./rotcheck-*.x86_64.rpm     # or .aarch64.rpm
+```
+
+Both install the `rotcheck` command and a man page (`man rotcheck`).
+On any other Linux, the `.tar.gz` holds the same binary plus the docs:
+unpack it and copy `rotcheck` somewhere on your `PATH`. Each release also has
+a `SHA256SUMS` file, so you can check the downloads with `sha256sum -c` first.
+
+### From source
 
 You need a Rust toolchain ([rustup.rs](https://rustup.rs)).
 
@@ -46,8 +69,9 @@ The binary is small (around 400 KB on Linux) and needs nothing else at run
 time. Keeping a copy next to an archive, together with this source, means
 you can still check it in ten years.
 
-To remove it again: `cargo uninstall rotcheck`. Manifests are plain text
-files, so nothing else is left behind.
+To remove it again: `cargo uninstall rotcheck` (or `sudo apt remove
+rotcheck` / `sudo dnf remove rotcheck` for the packages). Manifests are plain
+text files, so nothing else is left behind.
 
 ## Usage
 

@@ -8,6 +8,13 @@ under "Stable interface" below only changes in a new major version.
 
 ## 1.2.0 - 2026-10-28
 
+### Packages
+
+- First published release. Each release now comes with static Linux
+  binaries, `.deb` and `.rpm` packages for x86_64 and aarch64, and a
+  `SHA256SUMS` file.
+- A man page, `rotcheck(1)`, installed by the packages.
+
 ### Added
 
 - `verify --fast`: compares only each file's size and mtime with the
