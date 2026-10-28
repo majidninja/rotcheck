@@ -6,6 +6,8 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+## 1.2.0 - 2026-10-28
+
 ### Added
 
 - `verify --fast`: compares only each file's size and mtime with the
@@ -13,6 +15,12 @@ under "Stable interface" below only changes in a new major version.
   corruption; changed files are reported as `MODIFIED` and the summary says
   that contents weren't checked. Entries without size/mtime (plain
   `sha256sum` lists) are still hashed.
+
+### Stable interface
+
+- `verify --fast` joins the stable flags. What it compares (size and
+  mtime), and that differences are reported as `MODIFIED` and never as
+  `CORRUPTED`, stays the same within 1.x. Its exit codes match `verify`.
 
 ## 1.1.0 - 2026-10-26
 

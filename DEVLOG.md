@@ -394,3 +394,19 @@ help text and a CHANGELOG "Unreleased" entry.
 matches? (No: without contents we can't know; keep it.) Ideas: a
 `rotcheck status`-style "last full verify" timestamp in the manifest
 (would need a FORMAT.md comment field), or release 1.2.0 with `--fast`.
+
+## 2026-10-28
+
+- Released 1.2.0: Cargo.toml bumped, the "Unreleased" `verify --fast` notes
+  moved into a dated 1.2.0 entry, empty "Unreleased" heading kept on top.
+- `verify --fast` is now part of the stable interface (CHANGELOG 1.2.0
+  "Stable interface"): it compares size and mtime, reports differences as
+  `MODIFIED` (never `CORRUPTED`), same exit codes as `verify`.
+- README "Stability" now says 1.2. Tests still 36 unit + 17 CLI; the
+  changelog/version test covers the bump.
+
+**Next:** ideas: record when the last full verify ran (would need a
+FORMAT.md-compatible comment line in the manifest, so think carefully
+first), or a `--fast` hint in `verify`'s output when it's been a long time
+since a full check. Simpler alternative: an `--only PATH` filter for
+`verify` to check one subfolder.

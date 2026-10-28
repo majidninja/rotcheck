@@ -276,7 +276,7 @@ a terminal, so it never shows up in logs, pipes or cron mail. `verify
 
 ## Stability
 
-rotcheck is at 1.1. Within 1.x, the manifest format, the commands and flags,
+rotcheck is at 1.2. Within 1.x, the manifest format, the commands and flags,
 the exit codes, the layout of the report lines and the `.rotcheckignore`
 patterns stay as they are, so a
 manifest you write today keeps working and so do your cron jobs and scripts.
