@@ -95,7 +95,7 @@ mod tests {
         assert_eq!((summary.ok, summary.corrupted), (1, 1));
 
         // The corrupted file is still flagged afterwards; nothing else is.
-        let after = verify::verify(&tmp.0, &new, |_| {}, |_, _| {}).unwrap();
+        let after = verify::verify(&tmp.0, &new, "", |_| {}, |_, _| {}).unwrap();
         assert_eq!((after.ok, after.corrupted), (3, 1));
     }
 
@@ -103,7 +103,7 @@ mod tests {
     fn accept_corrupted_records_the_new_content() {
         let (tmp, old) = changed_tree("update-accept");
         let (new, _) = update(&tmp.0, &old, true, |_| {}, |_, _| {}).unwrap();
-        let after = verify::verify(&tmp.0, &new, |_| {}, |_, _| {}).unwrap();
+        let after = verify::verify(&tmp.0, &new, "", |_| {}, |_, _| {}).unwrap();
         assert_eq!(after.ok, 4);
         assert_eq!(after.new, 0);
         assert!(!after.has_problems());

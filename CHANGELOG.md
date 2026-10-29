@@ -6,6 +6,13 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+### Added
+
+- `verify --only PATH`: check just one file or subfolder (relative to the
+  checked folder) and skip the rest. Exits with 2 if nothing in the
+  manifest or on disk is under `PATH`, so a typo doesn't pass as a clean
+  run.
+
 ## 1.2.0 - 2026-10-28
 
 ### Packages

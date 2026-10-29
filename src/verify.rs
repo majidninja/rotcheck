@@ -90,13 +90,24 @@ pub fn classify(entry: &Entry, size: u64, mtime: i64, hash: &str) -> Status {
 /// Checks `root` against `entries`, calling `report` once per file: manifest
 /// entries in manifest order first, then new files in path order. Before the
 /// first `report`, `total` is told how many calls there will be.
+///
+/// Only paths [`in_scope`] of `scope` are checked or reported; an empty
+/// `scope` covers everything.
 pub fn verify<T: FnOnce(usize), F: FnMut(&str, Status)>(
     root: &Path,
     entries: &[Entry],
+    scope: &str,
     total: T,
     mut report: F,
 ) -> io::Result<Summary> {
-    scan(root, entries, total, |path, status, _| report(path, status))
+    scan_with(
+        root,
+        entries,
+        scope,
+        total,
+        full_check,
+        |path, status, _| report(path, status),
+    )
 }
 
 /// Like [`verify`], but only compares size and mtime with the manifest and
@@ -107,12 +118,18 @@ pub fn verify<T: FnOnce(usize), F: FnMut(&str, Status)>(
 pub fn verify_fast<T: FnOnce(usize), F: FnMut(&str, Status)>(
     root: &Path,
     entries: &[Entry],
+    scope: &str,
     total: T,
     mut report: F,
 ) -> io::Result<Summary> {
-    scan_with(root, entries, total, quick_check, |path, status, _| {
-        report(path, status)
-    })
+    scan_with(
+        root,
+        entries,
+        scope,
+        total,
+        quick_check,
+        |path, status, _| report(path, status),
+    )
 }
 
 /// The [`verify_fast`] check for one listed file that is on disk.
@@ -144,7 +161,29 @@ pub fn scan<T: FnOnce(usize), F: FnMut(&str, Status, Option<Entry>)>(
     total: T,
     report: F,
 ) -> io::Result<Summary> {
-    scan_with(root, entries, total, full_check, report)
+    scan_with(root, entries, "", total, full_check, report)
+}
+
+/// Turns a user-given folder or file (`./photos/`, `photos/2019`) into the
+/// form manifest paths use, for [`in_scope`].
+pub fn normalize_scope(scope: &str) -> String {
+    let mut s = scope.trim_end_matches('/');
+    while let Some(rest) = s.strip_prefix("./") {
+        s = rest.trim_start_matches('/');
+    }
+    if s == "." {
+        s = "";
+    }
+    s.to_string()
+}
+
+/// True if `path` is `scope` itself or lies inside the folder `scope`.
+/// An empty `scope` covers every path.
+pub fn in_scope(path: &str, scope: &str) -> bool {
+    scope.is_empty()
+        || path
+            .strip_prefix(scope)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
 }
 
 /// The walk shared by [`scan`] and [`verify_fast`]: `check` decides the
@@ -152,6 +191,7 @@ pub fn scan<T: FnOnce(usize), F: FnMut(&str, Status, Option<Entry>)>(
 fn scan_with<T, C, F>(
     root: &Path,
     entries: &[Entry],
+    scope: &str,
     total: T,
     check: C,
     mut report: F,
@@ -161,7 +201,14 @@ where
     C: Fn(&Path, &Entry) -> (Status, Option<Entry>),
     F: FnMut(&str, Status, Option<Entry>),
 {
-    let on_disk: BTreeSet<String> = walk::walk(root)?.into_iter().collect();
+    let on_disk: BTreeSet<String> = walk::walk(root)?
+        .into_iter()
+        .filter(|p| in_scope(p, scope))
+        .collect();
+    let entries: Vec<&Entry> = entries
+        .iter()
+        .filter(|e| in_scope(&e.path, scope))
+        .collect();
     let listed: BTreeSet<&str> = entries.iter().map(|e| e.path.as_str()).collect();
     let new_count = on_disk
         .iter()
@@ -258,6 +305,7 @@ mod tests {
         let summary = verify(
             root,
             &entries,
+            "",
             |n| announced = Some(n),
             |p, s| seen.push((p.to_string(), s)),
         )
@@ -310,8 +358,14 @@ mod tests {
             }
         }
         let mut seen = Vec::new();
-        let summary =
-            verify_fast(root, &entries, |_| {}, |p, s| seen.push((p.to_string(), s))).unwrap();
+        let summary = verify_fast(
+            root,
+            &entries,
+            "",
+            |_| {},
+            |p, s| seen.push((p.to_string(), s)),
+        )
+        .unwrap();
         seen.sort_by(|a, b| a.0.cmp(&b.0));
         assert_eq!(
             seen,
@@ -330,8 +384,59 @@ mod tests {
         let tmp = TempDir::new("verify-clean");
         fs::write(tmp.0.join("a"), "a").unwrap();
         let entries = crate::build_entries(&tmp.0).unwrap();
-        let summary = verify(&tmp.0, &entries, |_| {}, |_, s| assert_eq!(s, Status::Ok)).unwrap();
+        let summary = verify(
+            &tmp.0,
+            &entries,
+            "",
+            |_| {},
+            |_, s| assert_eq!(s, Status::Ok),
+        )
+        .unwrap();
         assert_eq!(summary.ok, 1);
+        assert!(!summary.has_problems());
+    }
+
+    #[test]
+    fn scope_matches_whole_path_components() {
+        assert_eq!(normalize_scope("./photos/"), "photos");
+        assert_eq!(normalize_scope("././a//"), "a");
+        assert_eq!(normalize_scope("."), "");
+        assert_eq!(normalize_scope("./"), "");
+        assert!(in_scope("photos/a.jpg", "photos"));
+        assert!(in_scope("photos", "photos"));
+        assert!(in_scope("anything", ""));
+        assert!(!in_scope("photos2/a.jpg", "photos"));
+        assert!(!in_scope("old/photos/a.jpg", "photos"));
+    }
+
+    #[test]
+    fn scoped_verify_ignores_other_folders() {
+        let tmp = TempDir::new("verify-scope");
+        let root = &tmp.0;
+        fs::create_dir(root.join("in")).unwrap();
+        fs::create_dir(root.join("out")).unwrap();
+        fs::write(root.join("in/a"), "a").unwrap();
+        fs::write(root.join("out/b"), "b").unwrap();
+        let entries = crate::build_entries(root).unwrap();
+        fs::remove_file(root.join("out/b")).unwrap();
+        fs::write(root.join("out/c"), "c").unwrap();
+        fs::write(root.join("in/d"), "d").unwrap();
+        let mut seen = Vec::new();
+        let summary = verify(
+            root,
+            &entries,
+            "in",
+            |_| {},
+            |p, s| seen.push((p.to_string(), s)),
+        )
+        .unwrap();
+        assert_eq!(
+            seen,
+            [
+                ("in/a".to_string(), Status::Ok),
+                ("in/d".to_string(), Status::New),
+            ]
+        );
         assert!(!summary.has_problems());
     }
 }

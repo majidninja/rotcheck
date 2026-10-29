@@ -427,3 +427,29 @@ since a full check. Simpler alternative: an `--only PATH` filter for
   Cargo.toml's version matches the newest dated CHANGELOG entry and tests
   pass. So bumping the version publishes a release: do it at most about
   every two weeks.
+
+## 2026-10-29
+
+- `verify --only PATH` (also `--only=PATH`): checks one file or subfolder,
+  relative to DIR. `verify::normalize_scope` strips `./` and trailing `/`;
+  `verify::in_scope` matches whole path components (`photos` doesn't match
+  `photos2/`). `scan_with` takes the scope and filters both manifest entries
+  and the walk; `scan` (used by `update`) passes "" so update is unchanged.
+- If the scope matches nothing at all (empty summary), exit 2 with a
+  message: a typo shouldn't look like a clean run.
+- `--only` takes a value, so `cmd_verify` pulls it out with a small
+  `take_value` helper before `split_flags` (which only knows booleans).
+- Docs: help text, man page (synopsis + option), README section and exit
+  codes, CHANGELOG "Unreleased". Tests: 38 unit + 19 CLI.
+- Gotcha: cargo said "Fresh" and kept running a stale binary from
+  2026-10-28 even after editing/touching sources (mtime oddity in target/).
+  `cargo clean -p rotcheck` fixed it. If the man-page test passes
+  suspiciously, check `cargo run -- help` actually shows the change.
+- Clippy warns (pre-existing, `src/sha256.rs`): `as_chunks` /
+  `as_chunks_mut` need Rust 1.88 but Cargo.toml says `rust-version = 1.85`.
+
+**Next:** fix the MSRV mismatch (either bump `rust-version` to 1.88 and say
+so in CHANGELOG, or rewrite those three spots with `chunks_exact`; the
+rewrite is kinder to older distro toolchains). Then consider `--only` for
+`update`, or release 1.3.0 with `--only` around 2026-11-11 (two weeks
+after 1.2.0).

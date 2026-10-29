@@ -22,6 +22,7 @@ USAGE:
         --strict               Also fail (exit 1) when there are new files
         --quiet                Print only the files that make it fail, no summary
         --fast                 Compare only size and mtime; don't read contents
+        --only <PATH>          Check only this file or subfolder (relative to DIR)
     rotcheck update [DIR]      Accept added, edited and removed files into the manifest
         --accept-corrupted     Also re-record files that look corrupted
         --quiet                Print only the files that make it fail, no summary
@@ -174,9 +175,39 @@ fn split_flags<const N: usize>(
     Some((set, rest))
 }
 
+/// Takes `--NAME VALUE` or `--NAME=VALUE` out of `args`. `Err` (already
+/// printed) if the value is missing.
+fn take_value(cmd: &str, args: &mut Vec<String>, name: &str) -> Result<Option<String>, ()> {
+    let prefix = format!("{name}=");
+    let Some(i) = args
+        .iter()
+        .position(|a| a == name || a.starts_with(&prefix))
+    else {
+        return Ok(None);
+    };
+    let arg = args.remove(i);
+    if let Some(value) = arg.strip_prefix(&prefix) {
+        return Ok(Some(value.to_string()));
+    }
+    if i < args.len() {
+        Ok(Some(args.remove(i)))
+    } else {
+        eprintln!("rotcheck {cmd}: {name} needs a path");
+        Err(())
+    }
+}
+
 fn cmd_verify(args: &[String]) -> ExitCode {
+    let mut args = args.to_vec();
+    let Ok(only) = take_value("verify", &mut args, "--only") else {
+        return ExitCode::from(2);
+    };
+    let scope = only
+        .as_deref()
+        .map(verify::normalize_scope)
+        .unwrap_or_default();
     let Some(([strict, quiet, fast], rest)) =
-        split_flags("verify", args, ["--strict", "--quiet", "--fast"])
+        split_flags("verify", &args, ["--strict", "--quiet", "--fast"])
     else {
         return ExitCode::from(2);
     };
@@ -210,12 +241,20 @@ fn cmd_verify(args: &[String]) -> ExitCode {
     };
     let total = |n| progress.set_total(n);
     let result = if fast {
-        verify::verify_fast(root, &entries, total, &mut report)
+        verify::verify_fast(root, &entries, &scope, total, &mut report)
     } else {
-        verify::verify(root, &entries, total, &mut report)
+        verify::verify(root, &entries, &scope, total, &mut report)
     };
     progress.clear();
     match result {
+        Ok(s) if !scope.is_empty() && s == verify::Summary::default() => {
+            // Most likely a typo; passing silently would hide that.
+            eprintln!(
+                "rotcheck verify: nothing in the manifest or on disk under '{}'",
+                only.unwrap_or_default()
+            );
+            ExitCode::from(2)
+        }
         Ok(s) => {
             let failed = s.has_problems() || (strict && s.new > 0);
             if quiet {

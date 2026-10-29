@@ -15,6 +15,8 @@ rotcheck \- detect missing, changed and silently corrupted files
 .RB [ \-\-strict ]
 .RB [ \-\-quiet ]
 .RB [ \-\-fast ]
+.RB [ \-\-only
+.IR PATH ]
 .RI [ DIR ]
 .br
 .B rotcheck update
@@ -95,6 +97,16 @@ Differences are reported as
 .BR MODIFIED .
 This cannot detect bit rot. Entries without a recorded size and time are
 hashed anyway.
+.TP
+.BI \-\-only " PATH"
+.RB ( verify )
+Check only the file or subfolder
+.I PATH
+(relative to
+.IR DIR ,
+as in the manifest) and ignore everything else. It is an error if
+neither the manifest nor the disk has anything under
+.IR PATH .
 .TP
 .B \-\-accept\-corrupted
 .RB ( update )

@@ -241,6 +241,22 @@ timestamp moved. Use it for a cheap daily look, and keep a full `verify`
 every week or month. (Entries from a plain `sha256sum` list have no sizes
 or times, so `--fast` reads those files in full.)
 
+### Checking one folder: `verify --only`
+
+If you only care about part of the tree right now (say, you just copied
+the 2019 photos back from a backup), point `--only` at that file or
+subfolder. The path is relative to the checked folder, as in the manifest:
+
+```text
+$ rotcheck verify --only 2019 ~/Pictures
+rotcheck: 812 ok, 0 corrupted, 0 modified, 0 missing, 0 new
+```
+
+Everything outside `2019/` is skipped, including missing and new files
+there. If nothing in the manifest or on disk is under that path, rotcheck
+treats it as a typo and exits with 2. It works together with `--fast`,
+`--strict` and `--quiet`.
+
 ### Exit codes
 
 Handy for cron jobs and scripts:
@@ -250,7 +266,7 @@ Handy for cron jobs and scripts:
   grow).
 - `1`: something is corrupted, modified, missing or unreadable.
 - `2`: rotcheck couldn't do the check (bad arguments, no manifest, unreadable
-  folder).
+  folder, nothing under the `--only` path).
 
 For cron, add `--quiet`: `verify` then prints only the files that make it
 fail (no summary line, and `NEW` files only with `--strict`). No output means

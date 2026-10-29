@@ -114,6 +114,39 @@ fn fast_verify_skips_contents() {
 }
 
 #[test]
+fn verify_only_checks_one_subfolder() {
+    let t = TempDir::new("only");
+    fs::create_dir(t.0.join("photos")).unwrap();
+    fs::create_dir(t.0.join("music")).unwrap();
+    fs::write(t.0.join("photos/a.jpg"), "a").unwrap();
+    fs::write(t.0.join("music/b.ogg"), "b").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+    fs::remove_file(t.0.join("music/b.ogg")).unwrap();
+
+    for only in ["photos", "./photos/", "--only=photos"] {
+        let args: &[&str] = if only.starts_with("--") {
+            &["verify", only]
+        } else {
+            &["verify", "--only", only]
+        };
+        let out = rotcheck(args, &t.0);
+        assert_eq!(out.status.code(), Some(0), "{only}");
+        assert_eq!(
+            stdout(&out),
+            "rotcheck: 1 ok, 0 corrupted, 0 modified, 0 missing, 0 new\n"
+        );
+    }
+
+    let out = rotcheck(&["verify", "--only", "music"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stdout(&out).starts_with("MISSING     music/b.ogg\n"));
+
+    // A typo shouldn't look like a clean run.
+    let out = rotcheck(&["verify", "--only", "photo"], &t.0);
+    assert_eq!(out.status.code(), Some(2));
+}
+
+#[test]
 fn new_files_alone_are_not_a_failure() {
     let t = TempDir::new("new-only");
     fs::write(t.0.join("a.txt"), "a").unwrap();
