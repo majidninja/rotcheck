@@ -453,3 +453,18 @@ so in CHANGELOG, or rewrite those three spots with `chunks_exact`; the
 rewrite is kinder to older distro toolchains). Then consider `--only` for
 `update`, or release 1.3.0 with `--only` around 2026-11-11 (two weeks
 after 1.2.0).
+
+## 2026-10-30
+
+- Fixed the MSRV mismatch: `src/sha256.rs` used `as_chunks` /
+  `as_chunks_mut` (Rust 1.88+) while `rust-version = 1.85`. Rewrote the
+  three spots with `chunks_exact` / `chunks_exact_mut` + `try_into`, so
+  older distro toolchains can still build. Clippy is clean now. Existing
+  tests (known vectors, million `a`, block-boundary splits) cover it.
+- CHANGELOG "Unreleased" gets a "Fixed" note.
+- Couldn't actually build with a 1.85 toolchain here (rustup not usable
+  without approval); verified by clippy's MSRV lint, which went quiet.
+
+**Next:** `--only PATH` for `update` (re-hash just one subfolder, leave
+other entries untouched), then release 1.3.0 around 2026-11-11 with
+`--only` and the MSRV fix.

@@ -13,6 +13,12 @@ under "Stable interface" below only changes in a new major version.
   manifest or on disk is under `PATH`, so a typo doesn't pass as a clean
   run.
 
+### Fixed
+
+- Building from source works again with Rust 1.85, the minimum version
+  stated in `Cargo.toml`. The built-in SHA-256 code had started using a
+  standard-library function that only exists from Rust 1.88.
+
 ## 1.2.0 - 2026-10-28
 
 ### Packages

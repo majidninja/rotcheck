@@ -61,9 +61,12 @@ impl Sha256 {
             self.buf_len = 0;
         }
 
-        let (blocks, rest) = data.as_chunks::<64>();
+        // `chunks_exact` + `try_into` instead of `as_chunks` keeps the
+        // MSRV at 1.85 (as_chunks is 1.88+).
+        let blocks = data.chunks_exact(64);
+        let rest = blocks.remainder();
         for block in blocks {
-            compress(&mut self.state, block);
+            compress(&mut self.state, block.try_into().expect("64-byte chunk"));
         }
         self.buf[..rest.len()].copy_from_slice(rest);
         self.buf_len = rest.len();
@@ -86,7 +89,7 @@ impl Sha256 {
         debug_assert_eq!(self.buf_len, 0);
 
         let mut out = [0u8; 32];
-        for (chunk, word) in out.as_chunks_mut::<4>().0.iter_mut().zip(self.state) {
+        for (chunk, word) in out.chunks_exact_mut(4).zip(self.state) {
             chunk.copy_from_slice(&word.to_be_bytes());
         }
         out
@@ -95,8 +98,8 @@ impl Sha256 {
 
 fn compress(state: &mut [u32; 8], block: &[u8; 64]) {
     let mut w = [0u32; 64];
-    for (i, chunk) in block.as_chunks::<4>().0.iter().enumerate() {
-        w[i] = u32::from_be_bytes(*chunk);
+    for (i, chunk) in block.chunks_exact(4).enumerate() {
+        w[i] = u32::from_be_bytes(chunk.try_into().expect("4-byte chunk"));
     }
     for i in 16..64 {
         let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
