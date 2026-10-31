@@ -26,6 +26,7 @@ USAGE:
     rotcheck update [DIR]      Accept added, edited and removed files into the manifest
         --accept-corrupted     Also re-record files that look corrupted
         --quiet                Print only the files that make it fail, no summary
+        --only <PATH>          Update only this file or subfolder; keep the rest as is
     rotcheck help              Show this message
     rotcheck --version         Show version
 
@@ -317,8 +318,16 @@ fn load_manifest(dir: &str, manifest_path: &Path) -> Option<Vec<manifest::Entry>
 }
 
 fn cmd_update(args: &[String]) -> ExitCode {
+    let mut args = args.to_vec();
+    let Ok(only) = take_value("update", &mut args, "--only") else {
+        return ExitCode::from(2);
+    };
+    let scope = only
+        .as_deref()
+        .map(verify::normalize_scope)
+        .unwrap_or_default();
     let Some(([accept_corrupted, quiet], rest)) =
-        split_flags("update", args, ["--accept-corrupted", "--quiet"])
+        split_flags("update", &args, ["--accept-corrupted", "--quiet"])
     else {
         return ExitCode::from(2);
     };
@@ -336,6 +345,7 @@ fn cmd_update(args: &[String]) -> ExitCode {
     let result = update::update(
         root,
         &old,
+        &scope,
         accept_corrupted,
         |n| progress.set_total(n),
         |path, status| {
@@ -357,6 +367,16 @@ fn cmd_update(args: &[String]) -> ExitCode {
         },
     );
     progress.clear();
+    if let Ok((_, s)) = &result {
+        if !scope.is_empty() && *s == verify::Summary::default() {
+            // Most likely a typo; don't rewrite the manifest for nothing.
+            eprintln!(
+                "rotcheck update: nothing in the manifest or on disk under '{}'",
+                only.unwrap_or_default()
+            );
+            return ExitCode::from(2);
+        }
+    }
     let result = result.and_then(|(entries, summary)| {
         manifest::save(&entries, &manifest_path)?;
         Ok(summary)

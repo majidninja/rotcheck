@@ -468,3 +468,24 @@ after 1.2.0).
 **Next:** `--only PATH` for `update` (re-hash just one subfolder, leave
 other entries untouched), then release 1.3.0 around 2026-11-11 with
 `--only` and the MSRV fix.
+
+## 2026-10-31
+
+- `update --only PATH` (also `--only=PATH`): re-hashes just one file or
+  subfolder. `verify::scan` now takes a scope (passed straight to
+  `scan_with`); `update::update` takes it too and copies every old entry
+  outside the scope through unchanged (deduplicated, first line wins, same
+  as the scan does for in-scope entries).
+- `cmd_update` reuses `take_value` + `normalize_scope`. If the scope
+  matches nothing, it exits 2 *before* saving, so a typo never rewrites the
+  manifest.
+- Docs: help text, man page (synopsis; `--only` option now says
+  verify, update), README paragraph under "Checking one folder", CHANGELOG
+  Unreleased. Tests: 39 unit + 20 CLI (new: `scope_leaves_other_entries_alone`,
+  `update_only_touches_one_subfolder`).
+
+**Next:** release 1.3.0 on/after 2026-11-11 (two weeks after 1.2.0) with
+`--only` for verify/update and the MSRV fix: bump Cargo.toml, move
+Unreleased into a dated entry, update the man page `.TH` line (version and
+date). Until then, small polish: maybe let `--only` be given more than
+once, or a `list --only` for symmetry — only if it stays simple.

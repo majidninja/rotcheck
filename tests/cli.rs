@@ -147,6 +147,36 @@ fn verify_only_checks_one_subfolder() {
 }
 
 #[test]
+fn update_only_touches_one_subfolder() {
+    let t = TempDir::new("update-only");
+    fs::create_dir(t.0.join("photos")).unwrap();
+    fs::create_dir(t.0.join("music")).unwrap();
+    fs::write(t.0.join("photos/a.jpg"), "a").unwrap();
+    fs::write(t.0.join("music/b.ogg"), "b").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+    fs::remove_file(t.0.join("music/b.ogg")).unwrap();
+    fs::write(t.0.join("photos/c.jpg"), "c").unwrap();
+
+    let out = rotcheck(&["update", "--only", "photos/"], &t.0);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(
+        stdout(&out),
+        "NEW         photos/c.jpg\n\
+         rotcheck: manifest updated: 1 added, 0 updated, 0 removed, 1 unchanged\n"
+    );
+    // The missing music file is still in the manifest.
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stdout(&out).starts_with("MISSING     music/b.ogg\n"));
+
+    // A typo leaves the manifest alone.
+    let before = fs::read(t.0.join(".rotcheck.sha256")).unwrap();
+    let out = rotcheck(&["update", "--only", "photo"], &t.0);
+    assert_eq!(out.status.code(), Some(2));
+    assert_eq!(fs::read(t.0.join(".rotcheck.sha256")).unwrap(), before);
+}
+
+#[test]
 fn new_files_alone_are_not_a_failure() {
     let t = TempDir::new("new-only");
     fs::write(t.0.join("a.txt"), "a").unwrap();

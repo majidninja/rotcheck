@@ -154,14 +154,16 @@ fn full_check(root: &Path, entry: &Entry) -> (Status, Option<Entry>) {
 
 /// Like [`verify`], but also hands `report` what is on disk right now for
 /// every file that was hashed (ok, modified or corrupted), so `update` does
-/// not have to read those files a second time.
+/// not have to read those files a second time. Only paths in `scope` (see
+/// [`in_scope`]) are looked at.
 pub fn scan<T: FnOnce(usize), F: FnMut(&str, Status, Option<Entry>)>(
     root: &Path,
     entries: &[Entry],
+    scope: &str,
     total: T,
     report: F,
 ) -> io::Result<Summary> {
-    scan_with(root, entries, "", total, full_check, report)
+    scan_with(root, entries, scope, total, full_check, report)
 }
 
 /// Turns a user-given folder or file (`./photos/`, `photos/2019`) into the

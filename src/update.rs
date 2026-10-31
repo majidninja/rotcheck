@@ -14,17 +14,26 @@ use crate::verify::{self, Status, Summary};
 /// Returns the entries for the new manifest, sorted by path, and a summary of
 /// what was found. `report` is called once per file, as in `verify`; a new
 /// file that can't be read is reported as unreadable and left out. `total`
-/// gets the number of files up front, as in `verify`.
+/// gets the number of files up front, as in `verify`. Only paths in `scope`
+/// (see [`verify::in_scope`]; empty means everything) are looked at; entries
+/// outside it are kept as they are.
 pub fn update<T: FnOnce(usize), F: FnMut(&str, Status)>(
     root: &Path,
     old: &[Entry],
+    scope: &str,
     accept_corrupted: bool,
     total: T,
     mut report: F,
 ) -> io::Result<(Vec<Entry>, Summary)> {
-    let mut entries = Vec::new();
+    let mut entries: Vec<Entry> = Vec::new();
+    let mut outside = std::collections::BTreeSet::new();
+    for e in old.iter().filter(|e| !verify::in_scope(&e.path, scope)) {
+        if outside.insert(e.path.as_str()) {
+            entries.push(e.clone()); // listed twice: the first line wins
+        }
+    }
     let mut unreadable_new = 0;
-    let mut summary = verify::scan(root, old, total, |path, status, current| {
+    let mut summary = verify::scan(root, old, scope, total, |path, status, current| {
         let mut status = status;
         let previous = || old.iter().find(|e| e.path == path).cloned();
         let keep = match status {
@@ -85,7 +94,7 @@ mod tests {
     #[test]
     fn accepts_changes_but_keeps_corrupted_checksum() {
         let (tmp, old) = changed_tree("update-keep");
-        let (new, summary) = update(&tmp.0, &old, false, |_| {}, |_, _| {}).unwrap();
+        let (new, summary) = update(&tmp.0, &old, "", false, |_| {}, |_, _| {}).unwrap();
         let paths: Vec<&str> = new.iter().map(|e| e.path.as_str()).collect();
         assert_eq!(paths, ["added.txt", "edited.txt", "rotten.bin", "same.txt"]);
         assert_eq!(find(&new, "rotten.bin"), find(&old, "rotten.bin"));
@@ -102,7 +111,7 @@ mod tests {
     #[test]
     fn accept_corrupted_records_the_new_content() {
         let (tmp, old) = changed_tree("update-accept");
-        let (new, _) = update(&tmp.0, &old, true, |_| {}, |_, _| {}).unwrap();
+        let (new, _) = update(&tmp.0, &old, "", true, |_| {}, |_, _| {}).unwrap();
         let after = verify::verify(&tmp.0, &new, "", |_| {}, |_, _| {}).unwrap();
         assert_eq!(after.ok, 4);
         assert_eq!(after.new, 0);
@@ -116,9 +125,29 @@ mod tests {
         let mut old = crate::build_entries(&tmp.0).unwrap();
         old[0].size = 0;
         old[0].mtime = 0;
-        let (new, summary) = update(&tmp.0, &old, false, |_| {}, |_, _| {}).unwrap();
+        let (new, summary) = update(&tmp.0, &old, "", false, |_| {}, |_, _| {}).unwrap();
         assert_eq!(summary.ok, 1);
         assert_eq!(new[0].size, 3);
         assert_ne!(new[0].mtime, 0);
+    }
+
+    #[test]
+    fn scope_leaves_other_entries_alone() {
+        let tmp = TempDir::new("update-scope");
+        let root = &tmp.0;
+        fs::create_dir_all(root.join("sub")).unwrap();
+        fs::write(root.join("top.txt"), "top").unwrap();
+        fs::write(root.join("sub/a.txt"), "a").unwrap();
+        let old = crate::build_entries(root).unwrap();
+        fs::write(root.join("top.txt"), "top, edited").unwrap();
+        fs::write(root.join("sub/a.txt"), "a, edited").unwrap();
+        fs::write(root.join("sub/b.txt"), "b").unwrap();
+        fs::write(root.join("new.txt"), "n").unwrap();
+        let (new, summary) = update(root, &old, "sub", false, |_| {}, |_, _| {}).unwrap();
+        let paths: Vec<&str> = new.iter().map(|e| e.path.as_str()).collect();
+        assert_eq!(paths, ["sub/a.txt", "sub/b.txt", "top.txt"]);
+        assert_eq!(find(&new, "top.txt"), find(&old, "top.txt"));
+        assert_ne!(find(&new, "sub/a.txt").hash, find(&old, "sub/a.txt").hash);
+        assert_eq!((summary.new, summary.modified, summary.ok), (1, 1, 0));
     }
 }

@@ -12,6 +12,9 @@ under "Stable interface" below only changes in a new major version.
   checked folder) and skip the rest. Exits with 2 if nothing in the
   manifest or on disk is under `PATH`, so a typo doesn't pass as a clean
   run.
+- `update --only PATH`: re-record just one file or subfolder; everything
+  else in the manifest is kept exactly as it was. Same typo check as
+  `verify --only`.
 
 ### Fixed
 

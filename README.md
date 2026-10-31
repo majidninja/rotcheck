@@ -257,6 +257,16 @@ there. If nothing in the manifest or on disk is under that path, rotcheck
 treats it as a typo and exits with 2. It works together with `--fast`,
 `--strict` and `--quiet`.
 
+`update` takes `--only` too. That's handy when you've reorganised one
+folder and want to record it without also accepting changes elsewhere:
+
+```text
+$ rotcheck update --only 2019 ~/Pictures
+```
+
+Entries outside `2019/` stay in the manifest exactly as they were, even
+if those files are now missing or edited.
+
 ### Exit codes
 
 Handy for cron jobs and scripts:
