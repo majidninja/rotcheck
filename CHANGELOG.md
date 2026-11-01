@@ -15,6 +15,10 @@ under "Stable interface" below only changes in a new major version.
 - `update --only PATH`: re-record just one file or subfolder; everything
   else in the manifest is kept exactly as it was. Same typo check as
   `verify --only`.
+- `list --only PATH`: list just one file or subfolder. Exits with 2 if
+  there's nothing to list under `PATH`.
+- `list` now rejects unknown options (exit 2) instead of treating them as
+  the folder name.
 
 ### Fixed
 

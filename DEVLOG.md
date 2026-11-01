@@ -489,3 +489,18 @@ other entries untouched), then release 1.3.0 around 2026-11-11 with
 Unreleased into a dated entry, update the man page `.TH` line (version and
 date). Until then, small polish: maybe let `--only` be given more than
 once, or a `list --only` for symmetry — only if it stays simple.
+
+## 2026-11-01
+
+- `list --only PATH` (also `--only=PATH`), for symmetry with verify/update.
+  `cmd_list` reuses `take_value` + `normalize_scope` + `in_scope`; exits 2
+  if nothing is listed under a non-empty scope. `list` now also goes
+  through `split_flags` with no known flags, so `list --bogus` is a usage
+  error instead of "no such folder --bogus".
+- Docs: help text, man page (synopsis; `--only` option now says list,
+  verify, update), README one-liner, CHANGELOG Unreleased. Tests: 39 unit
+  + 21 CLI (new: `list_only_shows_one_subfolder`).
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date). Before that, only small
+polish; repeated `--only` is still an idea but not needed.

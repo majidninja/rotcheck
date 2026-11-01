@@ -177,6 +177,30 @@ fn update_only_touches_one_subfolder() {
 }
 
 #[test]
+fn list_only_shows_one_subfolder() {
+    let t = TempDir::new("list-only");
+    fs::create_dir(t.0.join("photos")).unwrap();
+    fs::create_dir(t.0.join("photos2")).unwrap();
+    fs::write(t.0.join("photos/a.jpg"), "a").unwrap();
+    fs::write(t.0.join("photos2/b.jpg"), "b").unwrap();
+    fs::write(t.0.join("top.txt"), "t").unwrap();
+
+    let out = rotcheck(&["list", "--only=./photos/"], &t.0);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(stdout(&out), "photos/a.jpg\n");
+
+    let out = rotcheck(&["list", "--only", "top.txt"], &t.0);
+    assert_eq!(stdout(&out), "top.txt\n");
+
+    let out = rotcheck(&["list", "--only", "photo"], &t.0);
+    assert_eq!(out.status.code(), Some(2));
+    assert_eq!(stdout(&out), "");
+
+    let out = rotcheck(&["list", "--bogus"], &t.0);
+    assert_eq!(out.status.code(), Some(2));
+}
+
+#[test]
 fn new_files_alone_are_not_a_failure() {
     let t = TempDir::new("new-only");
     fs::write(t.0.join("a.txt"), "a").unwrap();

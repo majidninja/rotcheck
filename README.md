@@ -100,6 +100,8 @@ $ rotcheck list ~/Pictures
 scan.png
 ```
 
+Add `--only 2024` to list just one file or subfolder.
+
 Paths are relative to the folder, always use `/`, and are sorted. Symbolic
 links are skipped (not followed), so a link can't pull in files from outside
 the folder or send rotcheck in circles.

@@ -17,6 +17,7 @@ rotcheck - detect missing, changed and silently corrupted files
 USAGE:
     rotcheck hash <FILE>...    Print SHA-256 checksums (sha256sum format)
     rotcheck list [DIR]        List the files a manifest of DIR would cover
+        --only <PATH>          List only this file or subfolder (relative to DIR)
     rotcheck init [DIR]        Record checksums for DIR in DIR/.rotcheck.sha256
     rotcheck verify [DIR]      Check DIR against its manifest
         --strict               Also fail (exit 1) when there are new files
@@ -102,13 +103,30 @@ fn dir_arg<'a>(cmd: &str, args: &'a [String]) -> Option<&'a str> {
 }
 
 fn cmd_list(args: &[String]) -> ExitCode {
-    let Some(dir) = dir_arg("list", args) else {
+    let mut args = args.to_vec();
+    let Ok(only) = take_value("list", &mut args, "--only") else {
+        return ExitCode::from(2);
+    };
+    let scope = only
+        .as_deref()
+        .map(verify::normalize_scope)
+        .unwrap_or_default();
+    let Some(([], rest)) = split_flags("list", &args, []) else {
+        return ExitCode::from(2);
+    };
+    let Some(dir) = dir_arg("list", &rest) else {
         return ExitCode::from(2);
     };
     match walk::walk(Path::new(dir)) {
         Ok(files) => {
-            for f in files {
-                println!("{}", manifest::display_path(&f));
+            let mut any = false;
+            for f in files.iter().filter(|f| verify::in_scope(f, &scope)) {
+                any = true;
+                println!("{}", manifest::display_path(f));
+            }
+            if !any && !scope.is_empty() {
+                eprintln!("rotcheck list: no files under '{scope}' in {dir}");
+                return ExitCode::from(2);
             }
             ExitCode::SUCCESS
         }

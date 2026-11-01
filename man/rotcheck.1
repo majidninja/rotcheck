@@ -6,6 +6,8 @@ rotcheck \- detect missing, changed and silently corrupted files
 .IR FILE ...
 .br
 .B rotcheck list
+.RB [ \-\-only
+.IR PATH ]
 .RI [ DIR ]
 .br
 .B rotcheck init
@@ -101,8 +103,8 @@ This cannot detect bit rot. Entries without a recorded size and time are
 hashed anyway.
 .TP
 .BI \-\-only " PATH"
-.RB ( verify ", " update )
-Check only the file or subfolder
+.RB ( list ", " verify ", " update )
+Work on only the file or subfolder
 .I PATH
 (relative to
 .IR DIR ,
@@ -112,7 +114,10 @@ manifest entries outside
 .I PATH
 are kept exactly as they were. It is an error if
 neither the manifest nor the disk has anything under
-.IR PATH .
+.I PATH
+(for
+.BR list :
+if no file to list is under it).
 .TP
 .B \-\-accept\-corrupted
 .RB ( update )
