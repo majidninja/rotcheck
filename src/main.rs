@@ -15,7 +15,7 @@ const USAGE: &str = "\
 rotcheck - detect missing, changed and silently corrupted files
 
 USAGE:
-    rotcheck hash <FILE>...    Print SHA-256 checksums (sha256sum format)
+    rotcheck hash <FILE>...    Print SHA-256 checksums (sha256sum format); - is stdin
     rotcheck list [DIR]        List the files a manifest of DIR would cover
         --only <PATH>          List only this file or subfolder (relative to DIR)
     rotcheck init [DIR]        Record checksums for DIR in DIR/.rotcheck.sha256
@@ -74,7 +74,13 @@ fn cmd_hash(paths: &[String]) -> ExitCode {
     }
     let mut ok = true;
     for path in paths {
-        match hash_file(path) {
+        // `-` means standard input, as with `sha256sum` (`./-` is the file).
+        let result = if path == "-" {
+            sha256::hash_reader(io::stdin().lock()).map(|d| sha256::to_hex(&d))
+        } else {
+            hash_file(path)
+        };
+        match result {
             // Two spaces: the same layout `sha256sum` prints and reads.
             Ok(hex) => println!("{}", manifest::checksum_line(&hex, path)),
             Err(e) => {

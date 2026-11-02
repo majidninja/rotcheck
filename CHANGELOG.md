@@ -17,6 +17,7 @@ under "Stable interface" below only changes in a new major version.
   `verify --only`.
 - `list --only PATH`: list just one file or subfolder. Exits with 2 if
   there's nothing to list under `PATH`.
+- `hash -` reads standard input, like `sha256sum -`.
 - `list` now rejects unknown options (exit 2) instead of treating them as
   the folder name.
 

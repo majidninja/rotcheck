@@ -91,6 +91,9 @@ rotcheck hash *.jpg > photos.sha256
 sha256sum -c photos.sha256
 ```
 
+Use `-` as the file name to hash whatever comes in on standard input, for
+example a backup stream: `tar -c Photos | rotcheck hash -`.
+
 See which files rotcheck would track in a folder:
 
 ```sh

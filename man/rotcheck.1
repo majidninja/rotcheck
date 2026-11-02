@@ -58,7 +58,14 @@ rotcheck works offline and never changes your files.
 .BI hash " FILE" ...
 Print SHA\-256 checksums in
 .B sha256sum
-format.
+format. A
+.I FILE
+of
+.B \-
+reads standard input; use
+.B ./\-
+for a file named
+.BR \- .
 .TP
 .BR list " [\fIDIR\fR]"
 List the files a manifest of

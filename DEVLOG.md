@@ -504,3 +504,16 @@ once, or a `list --only` for symmetry — only if it stays simple.
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date). Before that, only small
 polish; repeated `--only` is still an idea but not needed.
+
+## 2026-11-02
+
+- `hash -` reads standard input (output line names it `-`, same as
+  `sha256sum -`). Handled only in `cmd_hash`, not in `hash_file`, because
+  `verify` also uses `hash_file` and a tracked file literally named `-`
+  must still be read from disk. `./-` hashes such a file from `hash`.
+- Docs: help text, man page, README paragraph, CHANGELOG Unreleased.
+  Tests: 39 unit + 22 CLI (new: `hash_dash_reads_stdin`, the "abc" vector).
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date). Until then only small
+polish.

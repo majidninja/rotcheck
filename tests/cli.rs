@@ -42,6 +42,25 @@ fn set_mtime(path: &Path, secs: u64) {
 }
 
 #[test]
+fn hash_dash_reads_stdin() {
+    use std::io::Write;
+    use std::process::Stdio;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+        .args(["hash", "-"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(b"abc").unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert!(out.status.success());
+    assert_eq!(
+        stdout(&out),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -\n"
+    );
+}
+
+#[test]
 fn init_then_verify_is_clean() {
     let t = TempDir::new("clean");
     fs::write(t.0.join("a.txt"), "a").unwrap();
