@@ -61,6 +61,34 @@ fn hash_dash_reads_stdin() {
 }
 
 #[test]
+fn hash_rejects_unknown_options_but_honours_double_dash() {
+    let t = TempDir::new("hashopts");
+    fs::write(t.0.join("-x"), "abc").unwrap();
+    // Run inside the folder: the `rotcheck` helper appends a DIR argument.
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+            .args(args)
+            .current_dir(&t.0)
+            .output()
+            .unwrap()
+    };
+
+    let out = run(&["hash", "-x"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(stdout(&out).is_empty());
+
+    let out = run(&["hash", "--", "-x"]);
+    assert!(out.status.success());
+    assert_eq!(
+        stdout(&out),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -x\n"
+    );
+
+    let out = run(&["hash", "--"]);
+    assert_eq!(out.status.code(), Some(2));
+}
+
+#[test]
 fn init_then_verify_is_clean() {
     let t = TempDir::new("clean");
     fs::write(t.0.join("a.txt"), "a").unwrap();

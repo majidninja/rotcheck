@@ -92,7 +92,9 @@ sha256sum -c photos.sha256
 ```
 
 Use `-` as the file name to hash whatever comes in on standard input, for
-example a backup stream: `tar -c Photos | rotcheck hash -`.
+example a backup stream: `tar -c Photos | rotcheck hash -`. A file whose
+name starts with `-` needs `./` in front (or `--` before it), otherwise
+rotcheck treats it as a mistyped option.
 
 See which files rotcheck would track in a folder:
 

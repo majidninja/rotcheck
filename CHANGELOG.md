@@ -20,6 +20,8 @@ under "Stable interface" below only changes in a new major version.
 - `hash -` reads standard input, like `sha256sum -`.
 - `list` now rejects unknown options (exit 2) instead of treating them as
   the folder name.
+- `hash` rejects unknown options too (exit 2), instead of reporting "no
+  such file". `--` ends options, so `hash -- -odd-name` still works.
 
 ### Fixed
 

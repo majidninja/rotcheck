@@ -68,12 +68,27 @@ fn hash_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
 }
 
 fn cmd_hash(paths: &[String]) -> ExitCode {
-    if paths.is_empty() {
+    // `hash` has no options. Anything that looks like one (other than `-`
+    // itself) is a usage error rather than "no such file", unless it comes
+    // after `--`, which ends options as usual.
+    let mut files: Vec<&String> = Vec::new();
+    let mut options_done = false;
+    for arg in paths {
+        if !options_done && arg == "--" {
+            options_done = true;
+        } else if !options_done && arg.starts_with('-') && arg != "-" {
+            eprintln!("rotcheck hash: unknown option {arg} (use ./{arg} or -- {arg} for a file)");
+            return ExitCode::from(2);
+        } else {
+            files.push(arg);
+        }
+    }
+    if files.is_empty() {
         eprintln!("rotcheck hash: no files given");
         return ExitCode::from(2);
     }
     let mut ok = true;
-    for path in paths {
+    for path in files {
         // `-` means standard input, as with `sha256sum` (`./-` is the file).
         let result = if path == "-" {
             sha256::hash_reader(io::stdin().lock()).map(|d| sha256::to_hex(&d))

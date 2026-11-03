@@ -66,6 +66,10 @@ reads standard input; use
 .B ./\-
 for a file named
 .BR \- .
+Other arguments starting with
+.B \-
+are rejected as unknown options, unless they come after
+.BR \-\- .
 .TP
 .BR list " [\fIDIR\fR]"
 List the files a manifest of

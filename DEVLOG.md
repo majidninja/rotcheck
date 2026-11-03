@@ -517,3 +517,18 @@ polish; repeated `--only` is still an idea but not needed.
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date). Until then only small
 polish.
+
+## 2026-11-03
+
+- `hash` now rejects unknown options (anything starting with `-` other
+  than `-` itself) with exit 2 and a hint (`./NAME` or `-- NAME`), instead
+  of "No such file". `--` ends options, like `sha256sum`. Same idea as the
+  `list` fix on 2026-11-01.
+- Docs: man page (hash entry), README note under the `hash -` paragraph,
+  CHANGELOG Unreleased. Tests: 39 unit + 23 CLI (new:
+  `hash_rejects_unknown_options_but_honours_double_dash`; it runs in the
+  temp dir because the shared `rotcheck` helper appends a DIR argument).
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date). Until then only small
+polish — e.g. check whether `init`/`verify`/`update` accept `--` too.
