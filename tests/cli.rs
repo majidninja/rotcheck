@@ -89,6 +89,43 @@ fn hash_rejects_unknown_options_but_honours_double_dash() {
 }
 
 #[test]
+fn folder_commands_reject_dash_options_and_honour_double_dash() {
+    let t = TempDir::new("dashdir");
+    let odd = t.0.join("-odd");
+    fs::create_dir(&odd).unwrap();
+    fs::write(odd.join("a.txt"), "a").unwrap();
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+            .args(args)
+            .current_dir(&t.0)
+            .output()
+            .unwrap()
+    };
+
+    // A folder name starting with a dash is an unknown option...
+    for cmd in ["init", "verify", "update", "list"] {
+        assert_eq!(run(&[cmd, "-odd"]).status.code(), Some(2), "{cmd}");
+        assert_eq!(run(&[cmd, "--bogus", "-odd"]).status.code(), Some(2));
+    }
+    assert!(!odd.join(".rotcheck.sha256").exists());
+
+    // ...unless it comes after `--`.
+    assert!(run(&["init", "--", "-odd"]).status.success());
+    assert!(odd.join(".rotcheck.sha256").exists());
+    assert!(run(&["verify", "--quiet", "--", "-odd"]).status.success());
+    assert!(run(&["update", "--quiet", "--", "-odd"]).status.success());
+    let out = run(&["list", "--", "-odd"]);
+    assert!(out.status.success());
+    assert_eq!(stdout(&out), "a.txt\n");
+    // An option after `--` is a folder name, not an option.
+    assert_eq!(
+        run(&["verify", "--", "--only=x"]).status.code(),
+        Some(2),
+        "no folder named --only=x"
+    );
+}
+
+#[test]
 fn init_then_verify_is_clean() {
     let t = TempDir::new("clean");
     fs::write(t.0.join("a.txt"), "a").unwrap();

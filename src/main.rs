@@ -159,7 +159,10 @@ fn cmd_list(args: &[String]) -> ExitCode {
 }
 
 fn cmd_init(args: &[String]) -> ExitCode {
-    let Some(dir) = dir_arg("init", args) else {
+    let Some(([], rest)) = split_flags("init", args, []) else {
+        return ExitCode::from(2);
+    };
+    let Some(dir) = dir_arg("init", &rest) else {
         return ExitCode::from(2);
     };
     let root = Path::new(dir);
@@ -199,8 +202,15 @@ fn split_flags<const N: usize>(
 ) -> Option<([bool; N], Vec<String>)> {
     let mut set = [false; N];
     let mut rest = Vec::new();
-    for arg in args {
-        if !arg.starts_with("--") {
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        if arg == "--" {
+            // Everything after `--` is a folder name, even if it starts
+            // with a dash.
+            rest.extend(iter.cloned());
+            break;
+        }
+        if !arg.starts_with('-') || arg == "-" {
             rest.push(arg.clone());
             continue;
         }
@@ -219,7 +229,9 @@ fn split_flags<const N: usize>(
 /// printed) if the value is missing.
 fn take_value(cmd: &str, args: &mut Vec<String>, name: &str) -> Result<Option<String>, ()> {
     let prefix = format!("{name}=");
-    let Some(i) = args
+    // Anything after `--` is a folder name, not an option.
+    let end = args.iter().position(|a| a == "--").unwrap_or(args.len());
+    let Some(i) = args[..end]
         .iter()
         .position(|a| a == name || a.starts_with(&prefix))
     else {

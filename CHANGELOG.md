@@ -22,6 +22,11 @@ under "Stable interface" below only changes in a new major version.
   the folder name.
 - `hash` rejects unknown options too (exit 2), instead of reporting "no
   such file". `--` ends options, so `hash -- -odd-name` still works.
+- `init`, `verify`, `update` and `list` accept `--` to end options too
+  (`verify -- -odd-folder`), and reject unknown options starting with a
+  single dash, like `-x`, instead of taking them as the folder name.
+  `init --bogus` is now a usage error instead of looking for a folder
+  called `--bogus`.
 
 ### Fixed
 

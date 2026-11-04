@@ -532,3 +532,18 @@ polish.
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date). Until then only small
 polish — e.g. check whether `init`/`verify`/`update` accept `--` too.
+
+## 2026-11-04
+
+- `split_flags` now treats `--` as end of options (everything after it is
+  positional) and rejects any unknown argument starting with `-` (except
+  `-` itself), not just `--xxx`. `take_value` only looks before `--`, so
+  `verify -- --only=x` means a folder called `--only=x`. `init` now goes
+  through `split_flags` too, so `init --bogus` is exit 2.
+- Docs: man page (new `--` entry under OPTIONS), README sentence,
+  CHANGELOG Unreleased. Tests: 39 unit + 24 CLI (new:
+  `folder_commands_reject_dash_options_and_honour_double_dash`).
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date). Until then only small
+polish.

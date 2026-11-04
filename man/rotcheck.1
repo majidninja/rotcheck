@@ -133,6 +133,14 @@ if no file to list is under it).
 .B \-\-accept\-corrupted
 .RB ( update )
 Also re\-record files that look corrupted.
+.TP
+.B \-\-
+End of options: a following argument is taken as a file or folder name
+even if it starts with
+.BR \- .
+Without it, an unknown argument starting with
+.B \-
+is a usage error (exit status 2).
 .SH OUTPUT
 .B verify
 and
