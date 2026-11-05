@@ -28,7 +28,7 @@ USAGE:
         --accept-corrupted     Also re-record files that look corrupted
         --quiet                Print only the files that make it fail, no summary
         --only <PATH>          Update only this file or subfolder; keep the rest as is
-    rotcheck help              Show this message
+    rotcheck help              Show this message; so does COMMAND --help
     rotcheck --version         Show version
 
 Files and folders matched by DIR/.rotcheckignore (one pattern per line,
@@ -37,6 +37,12 @@ Files and folders matched by DIR/.rotcheckignore (one pattern per line,
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if asks_for_help(args.get(1..).unwrap_or_default()) {
+        // `rotcheck verify --help` shows the usage instead of failing with
+        // "unknown option".
+        print!("{USAGE}");
+        return ExitCode::SUCCESS;
+    }
     match args.first().map(String::as_str) {
         Some("hash") => cmd_hash(&args[1..]),
         Some("list") => cmd_list(&args[1..]),
@@ -60,6 +66,13 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+/// True if a command's arguments contain `-h` or `--help` before any `--`.
+fn asks_for_help(args: &[String]) -> bool {
+    args.iter()
+        .take_while(|a| *a != "--")
+        .any(|a| a == "-h" || a == "--help")
 }
 
 fn hash_file<P: AsRef<Path>>(path: P) -> io::Result<String> {

@@ -28,6 +28,9 @@ under "Stable interface" below only changes in a new major version.
   `init --bogus` is now a usage error instead of looking for a folder
   called `--bogus`.
 
+- `COMMAND --help` (or `-h`), like `rotcheck verify --help`, prints the
+  usage summary instead of failing with "unknown option".
+
 ### Fixed
 
 - Building from source works again with Rust 1.85, the minimum version

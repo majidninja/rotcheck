@@ -126,6 +126,28 @@ fn folder_commands_reject_dash_options_and_honour_double_dash() {
 }
 
 #[test]
+fn command_help_flag_prints_usage() {
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    for args in [
+        &["verify", "--help"][..],
+        &["update", "-h"],
+        &["hash", "--help"],
+        &["list", "--only", "x", "--help"],
+    ] {
+        let out = run(args);
+        assert!(out.status.success(), "{args:?}");
+        assert!(stdout(&out).starts_with("rotcheck - "), "{args:?}");
+    }
+    // After `--` it's a file name, not a request for help.
+    assert_eq!(run(&["hash", "--", "--help"]).status.code(), Some(1));
+}
+
+#[test]
 fn init_then_verify_is_clean() {
     let t = TempDir::new("clean");
     fs::write(t.0.join("a.txt"), "a").unwrap();

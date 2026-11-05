@@ -547,3 +547,18 @@ polish — e.g. check whether `init`/`verify`/`update` accept `--` too.
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date). Until then only small
 polish.
+
+## 2026-11-05
+
+- `COMMAND --help` / `-h` (e.g. `rotcheck verify --help`) prints the usage
+  and exits 0, instead of "unknown option". Checked once in `main` via
+  `asks_for_help`, which only looks before `--`, so `hash -- --help` still
+  hashes a file named `--help`.
+- Docs: help line for `help`, man page (`-h, --help` under OPTIONS), README
+  sentence, CHANGELOG Unreleased. Tests: 39 unit + 25 CLI (new:
+  `command_help_flag_prints_usage`). Note: the man-page test splits help
+  text on whitespace, so a flag followed by `)` in USAGE fails it.
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date). Until then only small
+polish.

@@ -95,7 +95,8 @@ Use `-` as the file name to hash whatever comes in on standard input, for
 example a backup stream: `tar -c Photos | rotcheck hash -`. A file whose
 name starts with `-` needs `./` in front (or `--` before it), otherwise
 rotcheck treats it as a mistyped option. The same goes for folder names
-in the other commands: `rotcheck verify -- -odd-folder`.
+in the other commands: `rotcheck verify -- -odd-folder`. `--help` after
+any command (`rotcheck verify --help`) prints the usage summary.
 
 See which files rotcheck would track in a folder:
 
