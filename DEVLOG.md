@@ -562,3 +562,16 @@ polish.
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date). Until then only small
 polish.
+
+## 2026-11-06
+
+- The `COMMAND --help` shortcut from yesterday now only applies to real
+  commands (hash/list/init/verify/update). Before, `rotcheck verfy --help`
+  printed the usage and exited 0, hiding the typo; now it's "unknown
+  command 'verfy'" with exit 2. Extended `command_help_flag_prints_usage`.
+  CHANGELOG Unreleased entry amended (the feature isn't released yet).
+  Tests: 39 unit + 25 CLI.
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date). Until then only small
+polish.

@@ -29,7 +29,8 @@ under "Stable interface" below only changes in a new major version.
   called `--bogus`.
 
 - `COMMAND --help` (or `-h`), like `rotcheck verify --help`, prints the
-  usage summary instead of failing with "unknown option".
+  usage summary instead of failing with "unknown option". A mistyped
+  command (`rotcheck verfy --help`) is still reported as unknown (exit 2).
 
 ### Fixed
 

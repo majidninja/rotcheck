@@ -145,6 +145,10 @@ fn command_help_flag_prints_usage() {
     }
     // After `--` it's a file name, not a request for help.
     assert_eq!(run(&["hash", "--", "--help"]).status.code(), Some(1));
+    // A mistyped command is still an error, even with --help after it.
+    let out = run(&["verfy", "--help"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("unknown command 'verfy'"));
 }
 
 #[test]

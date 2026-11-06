@@ -37,9 +37,13 @@ Files and folders matched by DIR/.rotcheckignore (one pattern per line,
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if asks_for_help(args.get(1..).unwrap_or_default()) {
+    let known = matches!(
+        args.first().map(String::as_str),
+        Some("hash" | "list" | "init" | "verify" | "update")
+    );
+    if known && asks_for_help(&args[1..]) {
         // `rotcheck verify --help` shows the usage instead of failing with
-        // "unknown option".
+        // "unknown option". `rotcheck typo --help` still reports the typo.
         print!("{USAGE}");
         return ExitCode::SUCCESS;
     }
