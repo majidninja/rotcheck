@@ -37,6 +37,9 @@ under "Stable interface" below only changes in a new major version.
 - Building from source works again with Rust 1.85, the minimum version
   stated in `Cargo.toml`. The built-in SHA-256 code had started using a
   standard-library function that only exists from Rust 1.88.
+- Piping output into a command that stops reading early, like
+  `rotcheck list | head`, no longer crashes with a "Broken pipe" panic
+  (exit 101). rotcheck now stops quietly, like `ls` or `sha256sum` do.
 
 ## 1.2.0 - 2026-10-28
 

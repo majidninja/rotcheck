@@ -41,6 +41,30 @@ fn set_mtime(path: &Path, secs: u64) {
         .unwrap();
 }
 
+#[cfg(unix)]
+#[test]
+fn closed_output_pipe_does_not_panic() {
+    use std::os::unix::process::ExitStatusExt;
+    use std::process::Stdio;
+    let tmp = TempDir::new("pipe");
+    for i in 0..2000 {
+        fs::write(tmp.0.join(format!("file-with-a-longish-name-{i}")), "x").unwrap();
+    }
+    // Like `rotcheck list DIR | head -0`: the reader is gone before we write.
+    let mut child = Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+        .args(["list"])
+        .arg(&tmp.0)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    drop(child.stdout.take());
+    let out = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(!err.contains("panicked"), "stderr: {err}");
+    assert_eq!(out.status.signal(), Some(13), "status: {:?}", out.status);
+}
+
 #[test]
 fn hash_dash_reads_stdin() {
     use std::io::Write;

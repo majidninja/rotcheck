@@ -35,7 +35,27 @@ Files and folders matched by DIR/.rotcheckignore (one pattern per line,
 `*` within a name, trailing `/` for folders) are left out.
 ";
 
+/// Let a closed output pipe end the program quietly, as it does for `ls`
+/// or `sha256sum`. Rust ignores SIGPIPE by default, so `rotcheck list | head`
+/// would otherwise panic with "failed printing to stdout: Broken pipe".
+#[cfg(unix)]
+fn default_sigpipe() {
+    unsafe extern "C" {
+        fn signal(signum: i32, handler: usize) -> usize;
+    }
+    const SIGPIPE: i32 = 13; // The same number on Linux, macOS and the BSDs.
+    const SIG_DFL: usize = 0;
+    // SAFETY: called once at startup, before any other threads exist.
+    unsafe {
+        signal(SIGPIPE, SIG_DFL);
+    }
+}
+
+#[cfg(not(unix))]
+fn default_sigpipe() {}
+
 fn main() -> ExitCode {
+    default_sigpipe();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let known = matches!(
         args.first().map(String::as_str),

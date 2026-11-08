@@ -575,3 +575,18 @@ polish.
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date). Until then only small
 polish.
+
+## 2026-11-08
+
+- Fixed a crash with closed output pipes: Rust ignores SIGPIPE, so
+  `rotcheck list | head` (or `hash` with many files) panicked with
+  "failed printing to stdout: Broken pipe" and exit 101. `main` now resets
+  SIGPIPE to the default on unix (`default_sigpipe`, a tiny
+  `extern "C" signal` call; no libc crate), so the process ends quietly
+  like coreutils. Checked that the new test fails without the fix.
+- CHANGELOG Unreleased (Fixed). Tests: 39 unit + 26 CLI (new:
+  `closed_output_pipe_does_not_panic`, unix only; expects signal 13).
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date). Until then only small
+polish.
