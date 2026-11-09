@@ -128,7 +128,10 @@ neither the manifest nor the disk has anything under
 .I PATH
 (for
 .BR list :
-if no file to list is under it).
+if no file to list is under it), and if
+.I PATH
+is empty, absolute, or contains
+.BR .. .
 .TP
 .B \-\-accept\-corrupted
 .RB ( update )

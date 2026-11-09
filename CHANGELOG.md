@@ -11,7 +11,9 @@ under "Stable interface" below only changes in a new major version.
 - `verify --only PATH`: check just one file or subfolder (relative to the
   checked folder) and skip the rest. Exits with 2 if nothing in the
   manifest or on disk is under `PATH`, so a typo doesn't pass as a clean
-  run.
+  run. An empty or absolute `PATH`, or one containing `..`, is a usage
+  error (exit 2) with a message saying why, for all commands that take
+  `--only`.
 - `update --only PATH`: re-record just one file or subfolder; everything
   else in the manifest is kept exactly as it was. Same typo check as
   `verify --only`.

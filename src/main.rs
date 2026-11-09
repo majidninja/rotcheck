@@ -162,13 +162,9 @@ fn dir_arg<'a>(cmd: &str, args: &'a [String]) -> Option<&'a str> {
 
 fn cmd_list(args: &[String]) -> ExitCode {
     let mut args = args.to_vec();
-    let Ok(only) = take_value("list", &mut args, "--only") else {
+    let Ok((_, scope)) = take_only("list", &mut args) else {
         return ExitCode::from(2);
     };
-    let scope = only
-        .as_deref()
-        .map(verify::normalize_scope)
-        .unwrap_or_default();
     let Some(([], rest)) = split_flags("list", &args, []) else {
         return ExitCode::from(2);
     };
@@ -286,15 +282,37 @@ fn take_value(cmd: &str, args: &mut Vec<String>, name: &str) -> Result<Option<St
     }
 }
 
+/// Takes `--only PATH` out of `args` and returns `(PATH as given, scope)`;
+/// the scope is empty when `--only` is absent. `Err` (already printed) for a
+/// missing value, or a path that can't be inside DIR: empty, absolute, or
+/// containing `..`. Those would otherwise only fail with a puzzling
+/// "nothing under ..." (or, for an empty one, silently check everything).
+fn take_only(cmd: &str, args: &mut Vec<String>) -> Result<(Option<String>, String), ()> {
+    let Some(only) = take_value(cmd, args, "--only")? else {
+        return Ok((None, String::new()));
+    };
+    let scope = verify::normalize_scope(&only);
+    let problem = if only.is_empty() {
+        Some("needs a path")
+    } else if only.starts_with('/') || Path::new(&only).is_absolute() {
+        Some("takes a path relative to DIR, not an absolute one")
+    } else if scope.split('/').any(|part| part == "..") {
+        Some("takes a path inside DIR; '..' isn't allowed")
+    } else {
+        None
+    };
+    if let Some(problem) = problem {
+        eprintln!("rotcheck {cmd}: --only {problem} (got '{only}')");
+        return Err(());
+    }
+    Ok((Some(only), scope))
+}
+
 fn cmd_verify(args: &[String]) -> ExitCode {
     let mut args = args.to_vec();
-    let Ok(only) = take_value("verify", &mut args, "--only") else {
+    let Ok((only, scope)) = take_only("verify", &mut args) else {
         return ExitCode::from(2);
     };
-    let scope = only
-        .as_deref()
-        .map(verify::normalize_scope)
-        .unwrap_or_default();
     let Some(([strict, quiet, fast], rest)) =
         split_flags("verify", &args, ["--strict", "--quiet", "--fast"])
     else {
@@ -407,13 +425,9 @@ fn load_manifest(dir: &str, manifest_path: &Path) -> Option<Vec<manifest::Entry>
 
 fn cmd_update(args: &[String]) -> ExitCode {
     let mut args = args.to_vec();
-    let Ok(only) = take_value("update", &mut args, "--only") else {
+    let Ok((only, scope)) = take_only("update", &mut args) else {
         return ExitCode::from(2);
     };
-    let scope = only
-        .as_deref()
-        .map(verify::normalize_scope)
-        .unwrap_or_default();
     let Some(([accept_corrupted, quiet], rest)) =
         split_flags("update", &args, ["--accept-corrupted", "--quiet"])
     else {

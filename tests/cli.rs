@@ -335,6 +335,31 @@ fn list_only_shows_one_subfolder() {
 }
 
 #[test]
+fn only_rejects_paths_outside_dir() {
+    let t = TempDir::new("only-outside");
+    fs::create_dir(t.0.join("photos")).unwrap();
+    fs::write(t.0.join("photos/a.jpg"), "a").unwrap();
+    assert_eq!(rotcheck(&["init"], &t.0).status.code(), Some(0));
+    let manifest = fs::read(t.0.join(".rotcheck.sha256")).unwrap();
+
+    let abs = t.0.join("photos").display().to_string();
+    for cmd in ["list", "verify", "update"] {
+        for bad in ["", abs.as_str(), "../photos", "photos/../photos"] {
+            let out = rotcheck(&[cmd, "--only", bad], &t.0);
+            assert_eq!(out.status.code(), Some(2), "{cmd} --only '{bad}'");
+            assert_eq!(stdout(&out), "", "{cmd} --only '{bad}'");
+            let err = String::from_utf8_lossy(&out.stderr);
+            assert!(err.contains("--only"), "{cmd} --only '{bad}': {err}");
+        }
+    }
+    // A name that merely starts with dots is fine.
+    fs::write(t.0.join("..notes"), "n").unwrap();
+    let out = rotcheck(&["list", "--only", "..notes"], &t.0);
+    assert_eq!(stdout(&out), "..notes\n");
+    assert_eq!(fs::read(t.0.join(".rotcheck.sha256")).unwrap(), manifest);
+}
+
+#[test]
 fn new_files_alone_are_not_a_failure() {
     let t = TempDir::new("new-only");
     fs::write(t.0.join("a.txt"), "a").unwrap();

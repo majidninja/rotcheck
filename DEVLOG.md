@@ -590,3 +590,19 @@ polish.
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date). Until then only small
 polish.
+
+## 2026-11-09
+
+- `--only PATH` (list/verify/update) now rejects paths that can't be inside
+  DIR: empty (`--only ""` used to silently check everything), absolute
+  (`--only ~/Pictures/2019` used to fail with a puzzling "nothing under")
+  and anything with a `..` component. Exit 2 with a message saying why.
+  Shared helper `take_only` in main.rs replaces three copies of the
+  take_value + normalize_scope code. Names like `..notes` still work.
+- Docs: man page `--only`, README sentence, CHANGELOG (folded into the
+  unreleased `verify --only` entry). Tests: 39 unit + 27 CLI (new:
+  `only_rejects_paths_outside_dir`).
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date). Maybe: accept an
+absolute `--only` that lies inside DIR by stripping the DIR prefix.
