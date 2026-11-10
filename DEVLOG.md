@@ -606,3 +606,19 @@ polish.
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date). Maybe: accept an
 absolute `--only` that lies inside DIR by stripping the DIR prefix.
+
+## 2026-11-10
+
+- `--only` now accepts an absolute path that lies inside DIR (e.g. from tab
+  completion or `"$PWD/2019"`); the DIR prefix is stripped. Compared both
+  as written (`std::path::absolute`) and canonicalized, so symlinked temp
+  dirs and missing files (only in the manifest) both work. Absolute paths
+  outside DIR still exit 2. Split `take_only` (reads the value, rejects
+  empty) from `only_scope` (needs DIR, so it runs after `dir_arg`).
+- Docs: man page `--only`, README, CHANGELOG (unreleased `--only` entry).
+  Tests: 39 unit + 28 CLI (new: `only_accepts_absolute_path_inside_dir`).
+  Note: the CLI test helper `rotcheck(args, dir)` appends `dir` as the last
+  argument; it doesn't set the working directory.
+
+**Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
+CHANGELOG entry, man page `.TH` version and date).

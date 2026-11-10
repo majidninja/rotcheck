@@ -342,9 +342,9 @@ fn only_rejects_paths_outside_dir() {
     assert_eq!(rotcheck(&["init"], &t.0).status.code(), Some(0));
     let manifest = fs::read(t.0.join(".rotcheck.sha256")).unwrap();
 
-    let abs = t.0.join("photos").display().to_string();
+    let outside = t.0.parent().unwrap().display().to_string();
     for cmd in ["list", "verify", "update"] {
-        for bad in ["", abs.as_str(), "../photos", "photos/../photos"] {
+        for bad in ["", outside.as_str(), "/", "../photos", "photos/../photos"] {
             let out = rotcheck(&[cmd, "--only", bad], &t.0);
             assert_eq!(out.status.code(), Some(2), "{cmd} --only '{bad}'");
             assert_eq!(stdout(&out), "", "{cmd} --only '{bad}'");
@@ -357,6 +357,35 @@ fn only_rejects_paths_outside_dir() {
     let out = rotcheck(&["list", "--only", "..notes"], &t.0);
     assert_eq!(stdout(&out), "..notes\n");
     assert_eq!(fs::read(t.0.join(".rotcheck.sha256")).unwrap(), manifest);
+}
+
+#[test]
+fn only_accepts_absolute_path_inside_dir() {
+    let t = TempDir::new("only-absolute");
+    fs::create_dir_all(t.0.join("dir/photos")).unwrap();
+    fs::write(t.0.join("dir/photos/a.jpg"), "a").unwrap();
+    fs::write(t.0.join("dir/b.txt"), "b").unwrap();
+    let dir = t.0.join("dir");
+    assert_eq!(rotcheck(&["init"], &dir).status.code(), Some(0));
+
+    let abs = dir.join("photos/").display().to_string();
+    let out = rotcheck(&["list", "--only", &abs], &dir);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(stdout(&out), "photos/a.jpg\n");
+
+    let out = rotcheck(&["verify", "--only", &abs], &dir);
+    assert_eq!(out.status.code(), Some(0), "{}", stdout(&out));
+    assert!(
+        stdout(&out).contains("1 ok, 0 corrupted"),
+        "{}",
+        stdout(&out)
+    );
+
+    // A file that's only in the manifest (no longer on disk) works too.
+    fs::remove_file(t.0.join("dir/photos/a.jpg")).unwrap();
+    let out = rotcheck(&["verify", "--only", &abs], &dir);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stdout(&out).contains("photos/a.jpg"), "{}", stdout(&out));
 }
 
 #[test]

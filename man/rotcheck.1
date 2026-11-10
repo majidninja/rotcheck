@@ -130,8 +130,13 @@ neither the manifest nor the disk has anything under
 .BR list :
 if no file to list is under it), and if
 .I PATH
-is empty, absolute, or contains
-.BR .. .
+is empty, contains
+.BR .. ,
+or is an absolute path outside
+.IR DIR .
+An absolute path inside
+.I DIR
+is fine.
 .TP
 .B \-\-accept\-corrupted
 .RB ( update )

@@ -263,8 +263,9 @@ rotcheck: 812 ok, 0 corrupted, 0 modified, 0 missing, 0 new
 
 Everything outside `2019/` is skipped, including missing and new files
 there. If nothing in the manifest or on disk is under that path, rotcheck
-treats it as a typo and exits with 2; the same goes for an absolute path
-or one containing `..`. It works together with `--fast`,
+treats it as a typo and exits with 2; the same goes for a path containing
+`..` or an absolute path outside the folder. An absolute path inside it
+(say, from tab completion) is fine. It works together with `--fast`,
 `--strict` and `--quiet`.
 
 `update` takes `--only` too. That's handy when you've reorganised one

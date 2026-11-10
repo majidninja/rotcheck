@@ -8,7 +8,7 @@ mod walk;
 
 use std::fs::File;
 use std::io::{self, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 const USAGE: &str = "\
@@ -162,13 +162,16 @@ fn dir_arg<'a>(cmd: &str, args: &'a [String]) -> Option<&'a str> {
 
 fn cmd_list(args: &[String]) -> ExitCode {
     let mut args = args.to_vec();
-    let Ok((_, scope)) = take_only("list", &mut args) else {
+    let Ok(only) = take_only("list", &mut args) else {
         return ExitCode::from(2);
     };
     let Some(([], rest)) = split_flags("list", &args, []) else {
         return ExitCode::from(2);
     };
     let Some(dir) = dir_arg("list", &rest) else {
+        return ExitCode::from(2);
+    };
+    let Ok(scope) = only_scope("list", only.as_deref(), dir) else {
         return ExitCode::from(2);
     };
     match walk::walk(Path::new(dir)) {
@@ -282,35 +285,72 @@ fn take_value(cmd: &str, args: &mut Vec<String>, name: &str) -> Result<Option<St
     }
 }
 
-/// Takes `--only PATH` out of `args` and returns `(PATH as given, scope)`;
-/// the scope is empty when `--only` is absent. `Err` (already printed) for a
-/// missing value, or a path that can't be inside DIR: empty, absolute, or
-/// containing `..`. Those would otherwise only fail with a puzzling
-/// "nothing under ..." (or, for an empty one, silently check everything).
-fn take_only(cmd: &str, args: &mut Vec<String>) -> Result<(Option<String>, String), ()> {
-    let Some(only) = take_value(cmd, args, "--only")? else {
-        return Ok((None, String::new()));
-    };
-    let scope = verify::normalize_scope(&only);
-    let problem = if only.is_empty() {
-        Some("needs a path")
-    } else if only.starts_with('/') || Path::new(&only).is_absolute() {
-        Some("takes a path relative to DIR, not an absolute one")
-    } else if scope.split('/').any(|part| part == "..") {
-        Some("takes a path inside DIR; '..' isn't allowed")
-    } else {
-        None
-    };
-    if let Some(problem) = problem {
-        eprintln!("rotcheck {cmd}: --only {problem} (got '{only}')");
+/// Takes `--only PATH` out of `args`. `Err` (already printed) if the value is
+/// missing or empty; an empty one would otherwise silently check everything.
+fn take_only(cmd: &str, args: &mut Vec<String>) -> Result<Option<String>, ()> {
+    let only = take_value(cmd, args, "--only")?;
+    if only.as_deref() == Some("") {
+        eprintln!("rotcheck {cmd}: --only needs a path (got '')");
         return Err(());
     }
-    Ok((Some(only), scope))
+    Ok(only)
+}
+
+/// Turns `--only PATH` into a scope relative to `dir` (empty: everything).
+/// An absolute PATH is accepted if it lies inside `dir`. `Err` (already
+/// printed) for a path that can't be inside `dir`: absolute elsewhere, or
+/// containing `..`. Those would otherwise only fail with a puzzling
+/// "nothing under ...".
+fn only_scope(cmd: &str, only: Option<&str>, dir: &str) -> Result<String, ()> {
+    let Some(only) = only else {
+        return Ok(String::new());
+    };
+    let relative = if only.starts_with('/') || Path::new(only).is_absolute() {
+        strip_dir(only, dir)
+    } else {
+        Some(only.to_string())
+    };
+    let problem = match relative {
+        None => format!("takes a path inside DIR ('{dir}')"),
+        Some(rel) => {
+            let scope = verify::normalize_scope(&rel);
+            if !scope.split('/').any(|part| part == "..") {
+                return Ok(scope);
+            }
+            "takes a path inside DIR; '..' isn't allowed".to_string()
+        }
+    };
+    eprintln!("rotcheck {cmd}: --only {problem} (got '{only}')");
+    Err(())
+}
+
+/// The part of the absolute path `only` below `dir`, or `None` if it isn't
+/// inside `dir`. Compares both as written and with symlinks resolved, so
+/// `--only "$PWD/photos"` works whichever way the user got there.
+fn strip_dir(only: &str, dir: &str) -> Option<String> {
+    let only_forms = [Some(PathBuf::from(only)), std::fs::canonicalize(only).ok()];
+    let dir_forms = [
+        std::path::absolute(dir).ok(),
+        std::fs::canonicalize(dir).ok(),
+    ];
+    for o in only_forms.iter().flatten() {
+        for d in dir_forms.iter().flatten() {
+            if let Ok(rest) = o.strip_prefix(d) {
+                // Manifest paths always use '/'.
+                let parts: Vec<_> = rest
+                    .components()
+                    .map(|c| c.as_os_str().to_str())
+                    .collect::<Option<_>>()?;
+                return Some(parts.join("/"));
+            }
+        }
+    }
+    None
 }
 
 fn cmd_verify(args: &[String]) -> ExitCode {
     let mut args = args.to_vec();
-    let Ok((only, scope)) = take_only("verify", &mut args) else {
+    let Ok(only) = take_only("verify", &mut args) else {
         return ExitCode::from(2);
     };
     let Some(([strict, quiet, fast], rest)) =
@@ -319,6 +359,9 @@ fn cmd_verify(args: &[String]) -> ExitCode {
         return ExitCode::from(2);
     };
     let Some(dir) = dir_arg("verify", &rest) else {
+        return ExitCode::from(2);
+    };
+    let Ok(scope) = only_scope("verify", only.as_deref(), dir) else {
         return ExitCode::from(2);
     };
     let root = Path::new(dir);
@@ -425,7 +468,7 @@ fn load_manifest(dir: &str, manifest_path: &Path) -> Option<Vec<manifest::Entry>
 
 fn cmd_update(args: &[String]) -> ExitCode {
     let mut args = args.to_vec();
-    let Ok((only, scope)) = take_only("update", &mut args) else {
+    let Ok(only) = take_only("update", &mut args) else {
         return ExitCode::from(2);
     };
     let Some(([accept_corrupted, quiet], rest)) =
@@ -434,6 +477,9 @@ fn cmd_update(args: &[String]) -> ExitCode {
         return ExitCode::from(2);
     };
     let Some(dir) = dir_arg("update", &rest) else {
+        return ExitCode::from(2);
+    };
+    let Ok(scope) = only_scope("update", only.as_deref(), dir) else {
         return ExitCode::from(2);
     };
     let root = Path::new(dir);
