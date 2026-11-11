@@ -622,3 +622,17 @@ absolute `--only` that lies inside DIR by stripping the DIR prefix.
 
 **Next:** release 1.3.0 on/after 2026-11-11 (bump Cargo.toml, dated
 CHANGELOG entry, man page `.TH` version and date).
+
+## 2026-11-11
+
+- Released 1.3.0: Cargo.toml (and Cargo.lock) bumped, the Unreleased notes
+  moved into a dated 1.3.0 entry, empty "Unreleased" heading kept on top,
+  man page `.TH` updated to 1.3.0 / 2026-11-11.
+- Added a "Stable interface" section to 1.3.0: `--only PATH` (verify,
+  update, list; accepted paths and exit 2 when nothing is under PATH) and
+  `hash -` are now covered by the 1.x stability promise.
+- Tests: 39 unit + 28 CLI, all passing; clippy clean.
+
+**Next:** no release before ~2026-11-25. Ideas for the next cycle: a
+`verify --quiet` style option that prints only problems (check whether
+something similar already exists first), or a FORMAT.md comment field.

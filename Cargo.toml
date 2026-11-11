@@ -1,6 +1,6 @@
 [package]
 name = "rotcheck"
-version = "1.2.0"
+version = "1.3.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Detect missing, changed and silently corrupted files with plain sha256sum-compatible manifests"

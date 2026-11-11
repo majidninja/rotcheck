@@ -6,6 +6,8 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+## 1.3.0 - 2026-11-11
+
 ### Added
 
 - `verify --only PATH`: check just one file or subfolder (relative to the
@@ -30,7 +32,6 @@ under "Stable interface" below only changes in a new major version.
   single dash, like `-x`, instead of taking them as the folder name.
   `init --bogus` is now a usage error instead of looking for a folder
   called `--bogus`.
-
 - `COMMAND --help` (or `-h`), like `rotcheck verify --help`, prints the
   usage summary instead of failing with "unknown option". A mistyped
   command (`rotcheck verfy --help`) is still reported as unknown (exit 2).
@@ -43,6 +44,13 @@ under "Stable interface" below only changes in a new major version.
 - Piping output into a command that stops reading early, like
   `rotcheck list | head`, no longer crashes with a "Broken pipe" panic
   (exit 101). rotcheck now stops quietly, like `ls` or `sha256sum` do.
+
+### Stable interface
+
+- `--only PATH` for `verify`, `update` and `list` joins the stable flags:
+  which paths it accepts, and that it exits with 2 when nothing is under
+  `PATH`, stay the same within 1.x.
+- `hash -` (read standard input) is stable too.
 
 ## 1.2.0 - 2026-10-28
 
