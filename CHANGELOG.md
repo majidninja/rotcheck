@@ -6,6 +6,14 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+### Changed
+
+- `list`, `init`, `verify` and `update` now say plainly when DIR is a file
+  ("photo.jpg is a file, not a folder") or doesn't exist ("no such folder"),
+  and exit with 2. Before, `verify photo.jpg` complained about a missing
+  manifest at `photo.jpg/.rotcheck.sha256`, and `init` on a missing folder
+  exited with 1.
+
 ## 1.3.0 - 2026-11-11
 
 ### Added

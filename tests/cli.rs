@@ -335,6 +335,27 @@ fn list_only_shows_one_subfolder() {
 }
 
 #[test]
+fn dir_must_be_an_existing_folder() {
+    let t = TempDir::new("dir-not-folder");
+    let file = t.0.join("photo.jpg");
+    fs::write(&file, "p").unwrap();
+    let missing = t.0.join("nope");
+    for cmd in ["list", "init", "verify", "update"] {
+        let out = rotcheck(&[cmd], &file);
+        assert_eq!(out.status.code(), Some(2), "{cmd} on a file");
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(err.contains("is a file, not a folder"), "{cmd}: {err}");
+
+        let out = rotcheck(&[cmd], &missing);
+        assert_eq!(out.status.code(), Some(2), "{cmd} on a missing folder");
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(err.contains("no such folder"), "{cmd}: {err}");
+    }
+    // Nothing was created by the failed `init`.
+    assert!(!missing.exists());
+}
+
+#[test]
 fn only_rejects_paths_outside_dir() {
     let t = TempDir::new("only-outside");
     fs::create_dir(t.0.join("photos")).unwrap();

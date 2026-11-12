@@ -148,13 +148,31 @@ fn cmd_hash(paths: &[String]) -> ExitCode {
     }
 }
 
-/// The optional single DIR argument shared by several commands.
+/// The optional single DIR argument shared by several commands. `None`
+/// (already printed) if there's more than one, or if DIR isn't a folder:
+/// otherwise `verify photo.jpg` would say "no manifest at
+/// photo.jpg/.rotcheck.sha256", which hides the real mistake.
 fn dir_arg<'a>(cmd: &str, args: &'a [String]) -> Option<&'a str> {
-    match args {
-        [] => Some("."),
-        [dir] => Some(dir.as_str()),
+    let dir = match args {
+        [] => ".",
+        [dir] => dir.as_str(),
         _ => {
             eprintln!("rotcheck {cmd}: expected at most one directory");
+            return None;
+        }
+    };
+    match std::fs::metadata(dir) {
+        Ok(meta) if meta.is_dir() => Some(dir),
+        Ok(_) => {
+            eprintln!("rotcheck {cmd}: {dir} is a file, not a folder");
+            None
+        }
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            eprintln!("rotcheck {cmd}: no such folder: {dir}");
+            None
+        }
+        Err(e) => {
+            eprintln!("rotcheck {cmd}: {dir}: {e}");
             None
         }
     }

@@ -636,3 +636,19 @@ CHANGELOG entry, man page `.TH` version and date).
 **Next:** no release before ~2026-11-25. Ideas for the next cycle: a
 `verify --quiet` style option that prints only problems (check whether
 something similar already exists first), or a FORMAT.md comment field.
+
+## 2026-11-12
+
+- Checked the `verify --quiet` idea from yesterday: it already exists (for
+  verify and update), so nothing to do there.
+- `dir_arg` (shared by list/init/verify/update) now checks that DIR exists
+  and is a folder. Clear messages ("X is a file, not a folder", "no such
+  folder: X"), exit 2. Before, `verify photo.jpg` said "no manifest at
+  photo.jpg/.rotcheck.sha256", and `init` on a missing folder exited 1.
+- Docs: CHANGELOG Unreleased (Changed), man page EXIT STATUS line for 2.
+  Tests: 39 unit + 29 CLI (new: `dir_must_be_an_existing_folder`).
+- Note: this sandbox blocks Bash commands that use shell variables or
+  chain many steps; test behaviour via `tests/cli.rs` instead.
+
+**Next:** no release before ~2026-11-25. Ideas: a FORMAT.md comment field,
+or a `-q` short form for `--quiet`.
