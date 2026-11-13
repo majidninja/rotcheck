@@ -6,6 +6,10 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+### Added
+
+- `-q` as a short form of `--quiet` for `verify` and `update`.
+
 ### Changed
 
 - `list`, `init`, `verify` and `update` now say plainly when DIR is a file

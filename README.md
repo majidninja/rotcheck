@@ -289,7 +289,7 @@ Handy for cron jobs and scripts:
 - `2`: rotcheck couldn't do the check (bad arguments, no manifest, unreadable
   folder, nothing under the `--only` path).
 
-For cron, add `--quiet`: `verify` then prints only the files that make it
+For cron, add `--quiet` (or `-q`): `verify` then prints only the files that make it
 fail (no summary line, and `NEW` files only with `--strict`). No output means
 all is well, so cron only mails you when there's something to look at:
 

@@ -652,3 +652,17 @@ something similar already exists first), or a FORMAT.md comment field.
 
 **Next:** no release before ~2026-11-25. Ideas: a FORMAT.md comment field,
 or a `-q` short form for `--quiet`.
+
+## 2026-11-13
+
+- Added `-q` as a short form of `--quiet` (verify, update). Done in
+  `split_flags`, which maps short forms to long ones before matching, so
+  commands without `--quiet` (e.g. `list -q`) still say "unknown option
+  '-q'" and exit 2. Further short forms can go in the same `match`.
+- Docs: help text, man page (synopsis + OPTIONS), README cron paragraph,
+  CHANGELOG Unreleased (Added). Tests: 39 unit + 29 CLI (extended
+  `verify_quiet_prints_only_failures`).
+
+**Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks + `-q`).
+Idea: a FORMAT.md comment field, or make the man-page sync test also
+check short flags from the help text.

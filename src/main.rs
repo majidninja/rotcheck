@@ -21,12 +21,12 @@ USAGE:
     rotcheck init [DIR]        Record checksums for DIR in DIR/.rotcheck.sha256
     rotcheck verify [DIR]      Check DIR against its manifest
         --strict               Also fail (exit 1) when there are new files
-        --quiet                Print only the files that make it fail, no summary
+        -q, --quiet            Print only the files that make it fail, no summary
         --fast                 Compare only size and mtime; don't read contents
         --only <PATH>          Check only this file or subfolder (relative to DIR)
     rotcheck update [DIR]      Accept added, edited and removed files into the manifest
         --accept-corrupted     Also re-record files that look corrupted
-        --quiet                Print only the files that make it fail, no summary
+        -q, --quiet            Print only the files that make it fail, no summary
         --only <PATH>          Update only this file or subfolder; keep the rest as is
     rotcheck help              Show this message; so does COMMAND --help
     rotcheck --version         Show version
@@ -268,7 +268,13 @@ fn split_flags<const N: usize>(
             rest.push(arg.clone());
             continue;
         }
-        match known.iter().position(|k| k == arg) {
+        // Short forms; a command that doesn't take the long option still
+        // reports the short one as unknown.
+        let long = match arg.as_str() {
+            "-q" => "--quiet",
+            other => other,
+        };
+        match known.iter().position(|k| *k == long) {
             Some(i) => set[i] = true,
             None => {
                 eprintln!("rotcheck {cmd}: unknown option '{arg}'");

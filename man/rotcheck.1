@@ -15,7 +15,7 @@ rotcheck \- detect missing, changed and silently corrupted files
 .br
 .B rotcheck verify
 .RB [ \-\-strict ]
-.RB [ \-\-quiet ]
+.RB [ \-q | \-\-quiet ]
 .RB [ \-\-fast ]
 .RB [ \-\-only
 .IR PATH ]
@@ -23,7 +23,7 @@ rotcheck \- detect missing, changed and silently corrupted files
 .br
 .B rotcheck update
 .RB [ \-\-accept\-corrupted ]
-.RB [ \-\-quiet ]
+.RB [ \-q | \-\-quiet ]
 .RB [ \-\-only
 .IR PATH ]
 .RI [ DIR ]
@@ -99,7 +99,7 @@ checksum.
 .RB ( verify )
 Also exit with status 1 when there are new files.
 .TP
-.B \-\-quiet
+.BR \-q ", " \-\-quiet
 .RB ( verify ", " update )
 Print only the files that make the command fail, and no summary. No output
 means all is well, which suits

@@ -585,6 +585,16 @@ fn verify_quiet_prints_only_failures() {
     let out = rotcheck(&["verify", "--quiet"], &t.0);
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(stdout(&out), "MISSING     b.txt\n");
+
+    // -q is the same as --quiet.
+    let out = rotcheck(&["verify", "-q"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "MISSING     b.txt\n");
+
+    // Commands without --quiet don't take -q either.
+    let out = rotcheck(&["list", "-q"], &t.0);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("unknown option '-q'"));
 }
 
 #[test]
