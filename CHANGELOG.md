@@ -12,6 +12,8 @@ under "Stable interface" below only changes in a new major version.
 
 ### Changed
 
+- The help text and man page now list the short forms `-h` and `-V`, which
+  already worked but were only documented in part.
 - `list`, `init`, `verify` and `update` now say plainly when DIR is a file
   ("photo.jpg is a file, not a folder") or doesn't exist ("no such folder"),
   and exit with 2. Before, `verify photo.jpg` complained about a missing

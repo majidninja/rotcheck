@@ -28,8 +28,8 @@ USAGE:
         --accept-corrupted     Also re-record files that look corrupted
         -q, --quiet            Print only the files that make it fail, no summary
         --only <PATH>          Update only this file or subfolder; keep the rest as is
-    rotcheck help              Show this message; so does COMMAND --help
-    rotcheck --version         Show version
+    rotcheck help              Show this message; so do -h, --help after any command
+    rotcheck -V, --version     Show version
 
 Files and folders matched by DIR/.rotcheckignore (one pattern per line,
 `*` within a name, trailing `/` for folders) are left out.

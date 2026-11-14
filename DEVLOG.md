@@ -666,3 +666,16 @@ or a `-q` short form for `--quiet`.
 **Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks + `-q`).
 Idea: a FORMAT.md comment field, or make the man-page sync test also
 check short flags from the help text.
+
+## 2026-11-14
+
+- The man-page sync test (`man_page_matches_version_and_flags`) now also
+  checks short flags from the help text (`-q`, `-h`, `-V`), and matches
+  whole flags only (`\-h` no longer counts as found inside another word,
+  `\-\-accept` not inside `\-\-accept\-corrupted`).
+- Help text now lists `-h` and `-V` (both already worked); man page got a
+  `-V, --version` entry under OPTIONS. The version test runs `-V` too.
+- CHANGELOG Unreleased (Changed). Tests: 39 unit + 29 CLI, clippy clean.
+
+**Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks, `-q`,
+help text short forms). Idea: a FORMAT.md comment field.

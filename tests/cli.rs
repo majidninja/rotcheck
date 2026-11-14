@@ -649,11 +649,13 @@ fn changelog_top_entry_matches_version() {
     let version = top.split(' ').next().unwrap();
     assert_eq!(version, env!("CARGO_PKG_VERSION"));
 
-    let out = Command::new(env!("CARGO_BIN_EXE_rotcheck"))
-        .arg("--version")
-        .output()
-        .unwrap();
-    assert_eq!(stdout(&out), format!("rotcheck {version}\n"));
+    for flag in ["--version", "-V"] {
+        let out = Command::new(env!("CARGO_BIN_EXE_rotcheck"))
+            .arg(flag)
+            .output()
+            .unwrap();
+        assert_eq!(stdout(&out), format!("rotcheck {version}\n"));
+    }
 }
 
 #[test]
@@ -672,12 +674,24 @@ fn man_page_matches_version_and_flags() {
         .arg("help")
         .output()
         .unwrap();
-    for flag in stdout(&help)
+    // Long flags (`--quiet`) and short ones (`-q,`); a lone `-` is stdin.
+    let text = stdout(&help);
+    let flags: Vec<&str> = text
         .split_whitespace()
-        .filter(|w| w.starts_with("--"))
-    {
+        .map(|w| w.trim_end_matches(','))
+        .filter(|w| w.starts_with('-') && w.len() > 1)
+        .collect();
+    for short in ["-q", "-h", "-V"] {
+        assert!(flags.contains(&short), "help text doesn't mention {short}");
+    }
+    for flag in flags {
         let roff = flag.replace('-', "\\-");
-        assert!(man.contains(&roff), "man/rotcheck.1 doesn't mention {flag}");
+        // Not followed by more of a word, so `\-h` isn't found in `\-hash`
+        // or `\-\-accept` in `\-\-accept\-corrupted`.
+        let found = man.match_indices(&roff).any(|(i, _)| {
+            !man[i + roff.len()..].starts_with(|c: char| c.is_alphanumeric() || c == '\\')
+        });
+        assert!(found, "man/rotcheck.1 doesn't mention {flag}");
     }
 }
 
