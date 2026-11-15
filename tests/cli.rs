@@ -748,3 +748,26 @@ fn newly_ignored_entries_are_explained() {
         "{text}"
     );
 }
+
+#[test]
+fn byte_order_mark_from_an_editor_is_tolerated() {
+    let t = TempDir::new("bom");
+    fs::write(t.0.join("keep.txt"), "hello").unwrap();
+    fs::write(t.0.join("junk.tmp"), "x").unwrap();
+    fs::write(t.0.join(".rotcheckignore"), "\u{feff}*.tmp\n").unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    let manifest = t.0.join(".rotcheck.sha256");
+    let text = fs::read_to_string(&manifest).unwrap();
+    assert!(!text.contains("junk.tmp"), "{text}");
+    // As if the manifest had been opened and saved in such an editor.
+    fs::write(&manifest, format!("\u{feff}{text}")).unwrap();
+    let out = rotcheck(&["verify"], &t.0);
+    assert!(out.status.success(), "{}", stdout(&out));
+
+    // `update` writes it back without the mark.
+    fs::write(t.0.join("new.txt"), "new").unwrap();
+    assert!(rotcheck(&["update"], &t.0).status.success());
+    let text = fs::read_to_string(&manifest).unwrap();
+    assert!(text.starts_with("# rotcheck manifest v1\n"), "{text}");
+}

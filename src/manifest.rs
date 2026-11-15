@@ -171,6 +171,9 @@ fn clean_path(path: &str) -> Result<String, &'static str> {
 pub fn parse(text: &str) -> io::Result<Vec<Entry>> {
     let mut entries = Vec::new();
     let mut pending: Option<(u64, i64)> = None;
+    // Some Windows editors put a byte order mark at the start of a UTF-8
+    // file when saving; it isn't part of the first line.
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     for (i, line) in text.lines().enumerate() {
         let line_no = i + 1;
         if line.trim().is_empty() {
@@ -279,6 +282,19 @@ mod tests {
             let err = parse(&format!("{header}\n{line}")).unwrap_err();
             assert!(err.to_string().contains("line 1"), "{err}");
         }
+    }
+
+    #[test]
+    fn leading_byte_order_mark_is_skipped() {
+        let line = format!("{}  a.txt\n", "ab".repeat(32));
+        let got = parse(&format!("\u{feff}{HEADER}\n# size=3 mtime=7\n{line}")).unwrap();
+        assert_eq!((got[0].size, got[0].mtime), (3, 7));
+        // Also without a header, where the mark sits right before a hash.
+        assert_eq!(parse(&format!("\u{feff}{line}")).unwrap()[0].path, "a.txt");
+        // A newer format version is still refused behind a mark.
+        assert!(parse(&format!("\u{feff}# rotcheck manifest v2\n{line}")).is_err());
+        // Only at the very start: anywhere else it's left alone and fails.
+        assert!(parse(&format!("{HEADER}\n\u{feff}{line}")).is_err());
     }
 
     #[test]

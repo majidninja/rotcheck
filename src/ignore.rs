@@ -44,6 +44,9 @@ impl Ignore {
 
     pub fn parse(text: &str) -> Ignore {
         let mut patterns = Vec::new();
+        // A byte order mark from a Windows editor would otherwise become
+        // part of the first pattern, which then silently matches nothing.
+        let text = text.strip_prefix('\u{feff}').unwrap_or(text);
         for line in text.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
@@ -141,6 +144,16 @@ mod tests {
         assert!(glob("exact", "exact"));
         assert!(!glob("exact", "exactly"));
         assert!(glob("ü*", "über"));
+    }
+
+    #[test]
+    fn leading_byte_order_mark_is_skipped() {
+        let ig = Ignore::parse("\u{feff}*.tmp\ncache/\n");
+        assert!(ig.is_ignored("a/x.tmp", false));
+        assert!(ig.is_ignored("cache", true));
+        let ig = Ignore::parse("\u{feff}# comment\n*.tmp\n");
+        assert!(!ig.is_ignored("# comment", false));
+        assert!(ig.is_ignored("x.tmp", false));
     }
 
     #[test]

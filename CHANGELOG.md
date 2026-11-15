@@ -10,6 +10,13 @@ under "Stable interface" below only changes in a new major version.
 
 - `-q` as a short form of `--quiet` for `verify` and `update`.
 
+### Fixed
+
+- A manifest or `.rotcheckignore` saved by an editor that adds a UTF-8 byte
+  order mark (Notepad on older Windows, for one) now reads normally. Before,
+  the manifest was refused with "line 1: expected '<sha256>  <path>'", and
+  the first ignore pattern silently matched nothing.
+
 ### Changed
 
 - The help text and man page now list the short forms `-h` and `-V`, which

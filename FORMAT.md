@@ -23,6 +23,9 @@ comments, so the file works with standard tools too.
 
 - The file is UTF-8 text. Lines end with `\n` (rotcheck writes `\n`; a
   reader should also accept `\r\n`).
+- A UTF-8 byte order mark (the bytes `EF BB BF`) at the very start of the
+  file is skipped when reading. Some Windows editors add one when saving.
+  rotcheck never writes one.
 - Blank lines (empty or only whitespace) are ignored.
 - There are three kinds of non-blank lines: the header, metadata lines and
   checksum lines. Any other line starting with `#` is a comment and is

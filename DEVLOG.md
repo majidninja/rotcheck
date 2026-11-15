@@ -679,3 +679,24 @@ check short flags from the help text.
 
 **Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks, `-q`,
 help text short forms). Idea: a FORMAT.md comment field.
+
+## 2026-11-15
+
+- Fixed: a UTF-8 byte order mark at the start of the manifest or of
+  `.rotcheckignore` is now skipped (`manifest::parse`, `Ignore::parse`).
+  Before, a manifest saved by a BOM-adding editor was refused at line 1,
+  and the first ignore pattern silently matched nothing (`str::trim`
+  doesn't remove U+FEFF). Only at the very start of the file; rotcheck
+  never writes one.
+- Docs: FORMAT.md ("Encoding and lines"), CHANGELOG Unreleased (Fixed).
+  Tests: 41 unit + 30 CLI (new: two `leading_byte_order_mark_is_skipped`
+  unit tests, `byte_order_mark_from_an_editor_is_tolerated`).
+- Left the FORMAT.md comment-field idea alone: it's a format addition
+  with no clear user need yet.
+- Sandbox note: shell heredocs containing `{` next to quotes are blocked
+  too; use the Edit tool for file changes.
+
+**Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks, `-q`,
+help text short forms, BOM fix). Idea: a CLI test for `\r\n` line endings
+in the manifest and `.rotcheckignore` (should already work via `lines()`
+and `trim`, but nothing checks it end to end).
