@@ -700,3 +700,17 @@ help text short forms). Idea: a FORMAT.md comment field.
 help text short forms, BOM fix). Idea: a CLI test for `\r\n` line endings
 in the manifest and `.rotcheckignore` (should already work via `lines()`
 and `trim`, but nothing checks it end to end).
+
+## 2026-11-16
+
+- Added the CLI test `windows_line_endings_are_tolerated`: a
+  `.rotcheckignore` and a manifest with `\r\n` line endings behave the same
+  as with `\n` (ignore patterns match, verify passes, a changed file is
+  reported without a stray `\r`, `update` writes `\n` again). It already
+  worked; FORMAT.md promises it and now something checks it end to end.
+- No code or behaviour change, so no CHANGELOG entry.
+  Tests: 41 unit + 31 CLI, clippy clean.
+
+**Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks, `-q`,
+help text short forms, BOM fix). Idea: read through the README once as a
+new user and check every example still matches the real output.

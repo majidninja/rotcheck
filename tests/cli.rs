@@ -771,3 +771,42 @@ fn byte_order_mark_from_an_editor_is_tolerated() {
     let text = fs::read_to_string(&manifest).unwrap();
     assert!(text.starts_with("# rotcheck manifest v1\n"), "{text}");
 }
+
+#[test]
+fn windows_line_endings_are_tolerated() {
+    let t = TempDir::new("crlf");
+    fs::create_dir(t.0.join("cache")).unwrap();
+    fs::write(t.0.join("cache/blob"), "x").unwrap();
+    fs::write(t.0.join("keep.txt"), "hello").unwrap();
+    fs::write(t.0.join("junk.tmp"), "x").unwrap();
+    fs::write(
+        t.0.join(".rotcheckignore"),
+        "# scratch files\r\n*.tmp\r\n\r\ncache/\r\n",
+    )
+    .unwrap();
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    let manifest = t.0.join(".rotcheck.sha256");
+    let text = fs::read_to_string(&manifest).unwrap();
+    assert!(text.contains("keep.txt"), "{text}");
+    assert!(!text.contains("junk.tmp"), "{text}");
+    assert!(!text.contains("blob"), "{text}");
+
+    // As if the manifest had been saved by an editor that writes `\r\n`.
+    fs::write(&manifest, text.replace('\n', "\r\n")).unwrap();
+    let out = rotcheck(&["verify"], &t.0);
+    assert!(out.status.success(), "{}", stdout(&out));
+
+    // A changed file is still noticed, and its name has no stray `\r`.
+    fs::write(t.0.join("keep.txt"), "hello, edited").unwrap();
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(1), "{}", stdout(&out));
+    assert!(stdout(&out).contains("keep.txt"), "{}", stdout(&out));
+    assert!(!stdout(&out).contains('\r'), "{:?}", stdout(&out));
+
+    // `update` writes plain `\n` again.
+    assert!(rotcheck(&["update"], &t.0).status.success());
+    let text = fs::read_to_string(&manifest).unwrap();
+    assert!(!text.contains('\r'), "{text:?}");
+    assert!(rotcheck(&["verify"], &t.0).status.success());
+}
