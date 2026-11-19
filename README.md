@@ -183,7 +183,9 @@ MODIFIED    2024/notes.txt
 MISSING     old.txt
 CORRUPTED   scan.png
 NEW         new.txt
-rotcheck: manifest updated: 1 added, 1 updated, 1 removed, 0 unchanged, 1 corrupted (kept)
+rotcheck: manifest updated: 1 added, 1 updated, 1 removed, 1 unchanged, 1 corrupted (kept)
+rotcheck: corrupted files keep their old checksum, so `verify` still flags them
+rotcheck: restore them from a backup, or run `rotcheck update --accept-corrupted /home/you/Pictures`
 ```
 
 `update` reads every file again, like `verify`, and then rewrites the
@@ -337,10 +339,10 @@ a terminal, so it never shows up in logs, pipes or cron mail. `verify
 
 ## Stability
 
-rotcheck is at 1.2. Within 1.x, the manifest format, the commands and flags,
-the exit codes, the layout of the report lines and the `.rotcheckignore`
-patterns stay as they are, so a
-manifest you write today keeps working and so do your cron jobs and scripts.
+rotcheck follows semantic versioning. Within 1.x, the manifest format, the
+commands and flags, the exit codes, the layout of the report lines and the
+`.rotcheckignore` patterns stay as they are, so a manifest you write today
+keeps working and so do your cron jobs and scripts.
 New commands, flags and status words may be added. [CHANGELOG.md](CHANGELOG.md)
 lists exactly what's covered and what changed in each release.
 

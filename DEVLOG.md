@@ -714,3 +714,23 @@ and `trim`, but nothing checks it end to end).
 **Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks, `-q`,
 help text short forms, BOM fix). Idea: read through the README once as a
 new user and check every example still matches the real output.
+
+## 2026-11-19
+
+- Read the README through against what the code prints. Fixed two things:
+  the `update` example said `0 unchanged` though the `verify` example just
+  before it has `1 ok` (so it's `1 unchanged`), and it now shows the two
+  stderr hint lines `update` prints when it keeps a corrupted file. The
+  Stability section said "rotcheck is at 1.2"; it now says "follows
+  semantic versioning" so it can't go stale again.
+- Checked and matching: manifest header and `# size= mtime=` lines, the
+  `verify`/`--fast` summary lines, the progress line, `init` message.
+  (The `hash` example's checksums are illustrative and will differ.)
+- Docs only, no CHANGELOG entry. Tests: 41 unit + 31 CLI, clippy clean.
+- Sandbox note: running the built binary directly, or scripts in /tmp,
+  needs approval; verify output by reading the format strings/tests.
+
+**Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks, `-q`,
+help text short forms, BOM fix). Idea: give the man page an EXAMPLES
+check against the README, or a CLI test that pins the exact `update`
+summary + hint lines shown in the README.
