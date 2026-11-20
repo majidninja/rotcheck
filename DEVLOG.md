@@ -734,3 +734,17 @@ new user and check every example still matches the real output.
 help text short forms, BOM fix). Idea: give the man page an EXAMPLES
 check against the README, or a CLI test that pins the exact `update`
 summary + hint lines shown in the README.
+
+## 2026-11-20
+
+- Added the CLI test `readme_update_example_matches_real_output`: it builds
+  the exact folder from the README's `rotcheck update` example (including
+  `2024/notes.txt` and one unchanged file) and checks stdout and the two
+  stderr hint lines byte for byte. Yesterday's README fix is now guarded,
+  so the example can't drift from the real output again without a test
+  failing.
+- Test only, no CHANGELOG entry. Tests: 41 unit + 32 CLI, clippy clean.
+
+**Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks, `-q`,
+help text short forms, BOM fix). Idea: the same kind of pinning test for
+the README `verify` example.
