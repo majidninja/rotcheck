@@ -748,3 +748,18 @@ summary + hint lines shown in the README.
 **Next:** no release before ~2026-11-25 (then 1.4.0: DIR checks, `-q`,
 help text short forms, BOM fix). Idea: the same kind of pinning test for
 the README `verify` example.
+
+## 2026-11-27
+
+- Cut release 1.4.0 (last release 1.3.0 was 2026-11-11): Cargo.toml
+  version, man page `.TH` line (date + version), CHANGELOG Unreleased moved
+  into `## 1.4.0 - 2026-11-27` (DIR file/missing checks, `-q`, help text
+  short forms, BOM fix). The push script tags and publishes it.
+- Added the CLI test `readme_verify_example_matches_real_output`: same
+  folder as the README `verify` example; pins stdout byte for byte, exit
+  code 1, and an empty stderr. It passed first time, so the README is right.
+- Tests: 41 unit + 33 CLI, fmt and clippy clean.
+
+**Next:** no release before ~2026-12-11. Idea: the same pinning test for
+the README `init` and `list` examples (both use the same folder), then
+read the README as a new user again and look for real gaps.

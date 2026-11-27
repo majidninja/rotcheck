@@ -526,6 +526,38 @@ fn readme_update_example_matches_real_output() {
 }
 
 #[test]
+fn readme_verify_example_matches_real_output() {
+    // The same folder as the README's `rotcheck verify` example, so the
+    // example can't drift from what rotcheck really prints.
+    let t = TempDir::new("readme-verify");
+    fs::create_dir(t.0.join("2024")).unwrap();
+    fs::write(t.0.join("2024/beach.jpg"), "beach").unwrap();
+    fs::write(t.0.join("2024/notes.txt"), "notes").unwrap();
+    fs::write(t.0.join("old.txt"), "old").unwrap();
+    fs::write(t.0.join("scan.png"), "scan").unwrap();
+    set_mtime(&t.0.join("scan.png"), 1_700_000_000);
+    assert!(rotcheck(&["init"], &t.0).status.success());
+
+    fs::write(t.0.join("2024/notes.txt"), "notes, and more").unwrap();
+    fs::remove_file(t.0.join("old.txt")).unwrap();
+    fs::write(t.0.join("scan.png"), "scaN").unwrap();
+    set_mtime(&t.0.join("scan.png"), 1_700_000_000);
+    fs::write(t.0.join("new.txt"), "new").unwrap();
+
+    let out = rotcheck(&["verify"], &t.0);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(
+        stdout(&out),
+        "MODIFIED    2024/notes.txt\n\
+         MISSING     old.txt\n\
+         CORRUPTED   scan.png\n\
+         NEW         new.txt\n\
+         rotcheck: 1 ok, 1 corrupted, 1 modified, 1 missing, 1 new\n"
+    );
+    assert_eq!(String::from_utf8_lossy(&out.stderr), "");
+}
+
+#[test]
 fn update_needs_a_manifest_and_known_options() {
     let t = TempDir::new("update-errors");
     assert_eq!(rotcheck(&["update"], &t.0).status.code(), Some(2));

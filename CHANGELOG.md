@@ -6,6 +6,8 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+## 1.4.0 - 2026-11-27
+
 ### Added
 
 - `-q` as a short form of `--quiet` for `verify` and `update`.
