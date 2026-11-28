@@ -763,3 +763,19 @@ the README `verify` example.
 **Next:** no release before ~2026-12-11. Idea: the same pinning test for
 the README `init` and `list` examples (both use the same folder), then
 read the README as a new user again and look for real gaps.
+
+## 2026-11-28
+
+- Added the CLI test `readme_list_and_init_examples_match_real_output`:
+  builds the README's `list`/`init` folder and pins `list`, `list --only
+  2024` and the `init` message byte for byte (stderr empty), and checks
+  that `list` doesn't show the manifest after `init`. Passed first time.
+- Fixed `init` saying "recorded 1 files" for a one-file folder; it now
+  says "recorded 1 file". `init_then_verify_is_clean` checks it.
+  CHANGELOG Unreleased has the entry.
+- Tests: 41 unit + 34 CLI, fmt and clippy clean.
+
+**Next:** no release before ~2026-12-11. Idea: look for other singular/
+plural warts in output (verify summary uses fixed "N ok, N corrupted" so
+it's fine; check `update` and progress lines), then read the README as a
+new user and look for real gaps.

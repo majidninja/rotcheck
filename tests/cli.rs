@@ -179,7 +179,9 @@ fn command_help_flag_prints_usage() {
 fn init_then_verify_is_clean() {
     let t = TempDir::new("clean");
     fs::write(t.0.join("a.txt"), "a").unwrap();
-    assert!(rotcheck(&["init"], &t.0).status.success());
+    let out = rotcheck(&["init"], &t.0);
+    assert!(out.status.success());
+    assert!(stdout(&out).starts_with("rotcheck: recorded 1 file in "));
 
     let out = rotcheck(&["verify"], &t.0);
     assert_eq!(out.status.code(), Some(0));
@@ -555,6 +557,42 @@ fn readme_verify_example_matches_real_output() {
          rotcheck: 1 ok, 1 corrupted, 1 modified, 1 missing, 1 new\n"
     );
     assert_eq!(String::from_utf8_lossy(&out.stderr), "");
+}
+
+#[test]
+fn readme_list_and_init_examples_match_real_output() {
+    // The same folder as the README's `rotcheck list` and `rotcheck init`
+    // examples, so they can't drift from what rotcheck really prints.
+    let t = TempDir::new("readme-list-init");
+    fs::create_dir(t.0.join("2024")).unwrap();
+    fs::write(t.0.join("2024/beach.jpg"), "beach").unwrap();
+    fs::write(t.0.join("2024/notes.txt"), "notes").unwrap();
+    fs::write(t.0.join("scan.png"), "scan").unwrap();
+
+    let out = rotcheck(&["list"], &t.0);
+    assert!(out.status.success());
+    assert_eq!(stdout(&out), "2024/beach.jpg\n2024/notes.txt\nscan.png\n");
+    assert_eq!(String::from_utf8_lossy(&out.stderr), "");
+
+    let out = rotcheck(&["list", "--only", "2024"], &t.0);
+    assert!(out.status.success());
+    assert_eq!(stdout(&out), "2024/beach.jpg\n2024/notes.txt\n");
+
+    let out = rotcheck(&["init"], &t.0);
+    assert!(out.status.success());
+    assert_eq!(
+        stdout(&out),
+        format!(
+            "rotcheck: recorded 3 files in {}\n",
+            t.0.join(".rotcheck.sha256").display()
+        )
+    );
+    assert_eq!(String::from_utf8_lossy(&out.stderr), "");
+
+    // After init, list still shows the same files: the manifest itself
+    // is never tracked.
+    let out = rotcheck(&["list"], &t.0);
+    assert_eq!(stdout(&out), "2024/beach.jpg\n2024/notes.txt\nscan.png\n");
 }
 
 #[test]

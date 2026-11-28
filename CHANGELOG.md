@@ -6,6 +6,11 @@ under "Stable interface" below only changes in a new major version.
 
 ## Unreleased
 
+### Fixed
+
+- `init` on a folder with one file now says "recorded 1 file", not
+  "recorded 1 files".
+
 ## 1.4.0 - 2026-11-27
 
 ### Added

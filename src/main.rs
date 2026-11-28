@@ -234,7 +234,8 @@ fn cmd_init(args: &[String]) -> ExitCode {
     }) {
         Ok(n) => {
             println!(
-                "rotcheck: recorded {n} files in {}",
+                "rotcheck: recorded {n} {} in {}",
+                if n == 1 { "file" } else { "files" },
                 manifest_path.display()
             );
             ExitCode::SUCCESS
